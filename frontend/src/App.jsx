@@ -61,6 +61,7 @@ function NavLink({ to, children, icon }) {
 function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isHandlingCallback, setIsHandlingCallback] = useState(false)
 
   useEffect(() => {
     // OAuth 리디렉션 후 URL 해시에서 토큰 처리
@@ -69,6 +70,7 @@ function App() {
       const accessToken = hashParams.get('access_token')
       
       if (accessToken) {
+        setIsHandlingCallback(true)
         console.log('🔍 OAuth 콜백 감지, 토큰 처리 중...')
         
         // localhost로 리디렉션된 경우 프로덕션 URL로 자동 리디렉션
@@ -83,29 +85,44 @@ function App() {
         // 프로덕션 환경에서 토큰 처리
         console.log('✅ 프로덕션 환경에서 토큰 처리')
         
-        // 세션 복원
-        const { data: { session }, error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: hashParams.get('refresh_token') || '',
-        })
-        
-        if (session) {
-          console.log('✅ 세션 복원 성공, 사용자 정보 로드 중...')
-          // URL 해시 정리 (보안상) - 세션 복원 후에 정리
-          window.history.replaceState(null, '', window.location.pathname)
-          // 사용자 정보 로드
-          const currentUser = await getCurrentUser()
-          console.log('✅ 사용자 정보:', currentUser)
-          if (currentUser) {
-            setUser(currentUser)
-            setLoading(false)
-          } else {
-            console.warn('⚠️ 사용자 정보가 null입니다')
+        try {
+          // 세션 복원
+          const { data: { session }, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: hashParams.get('refresh_token') || '',
+          })
+          
+          if (session) {
+            console.log('✅ 세션 복원 성공, 사용자 정보 로드 중...')
+            // URL 해시 정리 (보안상) - 세션 복원 후에 정리
+            window.history.replaceState(null, '', window.location.pathname)
+            
+            // 사용자 정보 로드
+            const currentUser = await getCurrentUser()
+            console.log('✅ 사용자 정보:', currentUser)
+            
+            if (currentUser) {
+              setUser(currentUser)
+              setLoading(false)
+            } else {
+              console.warn('⚠️ 사용자 정보가 null입니다, 세션에서 직접 가져오기 시도')
+              // 세션에서 직접 사용자 정보 가져오기
+              if (session.user) {
+                setUser({ id: session.user.id, email: session.user.email || '' })
+                setLoading(false)
+              } else {
+                setLoading(false)
+              }
+            }
+          } else if (error) {
+            console.error('❌ 세션 복원 실패:', error)
             setLoading(false)
           }
-        } else if (error) {
-          console.error('❌ 세션 복원 실패:', error)
+        } catch (err) {
+          console.error('❌ OAuth 콜백 처리 중 오류:', err)
           setLoading(false)
+        } finally {
+          setIsHandlingCallback(false)
         }
         return
       }
@@ -119,14 +136,13 @@ function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log('Auth state changed:', _event, session ? 'has session' : 'no session')
-      
-      // OAuth 콜백 처리 중이면 onAuthStateChange는 무시 (중복 방지)
-      const hashParams = new URLSearchParams(window.location.hash.substring(1))
-      if (hashParams.get('access_token')) {
+      // OAuth 콜백 처리 중이면 무시
+      if (isHandlingCallback) {
         console.log('⏭️ OAuth 콜백 처리 중이므로 onAuthStateChange 무시')
         return
       }
+      
+      console.log('Auth state changed:', _event, session ? 'has session' : 'no session')
       
       if (session && _event === 'SIGNED_IN') {
         console.log('✅ SIGNED_IN 이벤트, 사용자 정보 로드 중...')
@@ -135,11 +151,15 @@ function App() {
         console.log('👋 SIGNED_OUT 이벤트')
         setUser(null)
         setLoading(false)
+      } else if (!session) {
+        // 세션이 없는 경우
+        setUser(null)
+        setLoading(false)
       }
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [isHandlingCallback])
 
   const checkUser = async () => {
     try {
@@ -161,13 +181,40 @@ function App() {
   const loadUser = async () => {
     try {
       console.log('🔄 사용자 정보 로드 시작...')
-      const currentUser = await getCurrentUser()
+      
+      // 타임아웃 설정 (5초)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('사용자 정보 로드 시간 초과')), 5000)
+      )
+      
+      const userPromise = getCurrentUser()
+      const currentUser = await Promise.race([userPromise, timeoutPromise])
+      
       console.log('✅ 사용자 정보 로드 완료:', currentUser)
-      setUser(currentUser)
+      
+      if (currentUser) {
+        setUser(currentUser)
+      } else {
+        // 세션에서 직접 가져오기 시도
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          console.log('✅ 세션에서 사용자 정보 가져옴')
+          setUser({ id: session.user.id, email: session.user.email || '' })
+        }
+      }
       setLoading(false)
     } catch (error) {
       console.error('❌ 사용자 정보 로드 실패:', error)
-      setUser(null)
+      // 세션에서 직접 가져오기 시도
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          console.log('✅ 세션에서 사용자 정보 가져옴 (폴백)')
+          setUser({ id: session.user.id, email: session.user.email || '' })
+        }
+      } catch (e) {
+        console.error('❌ 세션에서도 사용자 정보 가져오기 실패:', e)
+      }
       setLoading(false)
     }
   }
