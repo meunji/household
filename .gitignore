@@ -50,11 +50,15 @@ Thumbs.db
 
 # Frontend
 frontend/node_modules/
-
+frontend/dist/
 frontend/.env
 frontend/.env.local
 frontend/.vite/
 frontend/*.log
+
+# GitHub Pages (빌드된 파일은 Actions에서 생성)
+docs/assets/
+docs/index.html
 
 # Debug
 .cursor/debug.log
