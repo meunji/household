@@ -13,12 +13,34 @@ export default function Login({ onLoginSuccess }) {
     setError(null)
 
     try {
+      // 현재 환경에 맞는 리디렉션 URL 설정
+      // GitHub Pages: /household/ 경로 포함
+      // 로컬 개발: / 경로
+      const basename = window.location.pathname.startsWith('/household/') ? '/household' : ''
+      const redirectTo = `${window.location.origin}${basename}/`
+      
+      console.log('🔍 OAuth 시작:', {
+        currentUrl: window.location.href,
+        redirectTo: redirectTo,
+        basename: basename,
+      })
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}`,
+          redirectTo: redirectTo,
+          skipBrowserRedirect: false, // 브라우저 리디렉션 명시적으로 활성화
         },
       })
+      
+      console.log('🔍 OAuth 응답:', { data, error })
+      
+      // OAuth가 성공하면 data.url로 리디렉션됨
+      if (data?.url) {
+        console.log('✅ OAuth URL 생성됨, 리디렉션:', data.url)
+        // 브라우저가 자동으로 리디렉션됨
+        return
+      }
 
       if (error) {
         if (error.message && error.message.includes('not enabled')) {

@@ -63,7 +63,49 @@ function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    checkUser()
+    // OAuth 리디렉션 후 URL 해시에서 토큰 처리
+    const handleAuthCallback = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      const accessToken = hashParams.get('access_token')
+      
+      if (accessToken) {
+        console.log('🔍 OAuth 콜백 감지, 토큰 처리 중...')
+        
+        // localhost로 리디렉션된 경우 프로덕션 URL로 자동 리디렉션
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          const hash = window.location.hash
+          const productionUrl = 'https://meunji.github.io/household/'
+          console.log('🔄 localhost 감지, 프로덕션 URL로 리디렉션:', productionUrl + hash)
+          window.location.href = productionUrl + hash
+          return
+        }
+        
+        // 프로덕션 환경에서 토큰 처리
+        console.log('✅ 프로덕션 환경에서 토큰 처리')
+        // URL 해시 정리 (보안상)
+        window.history.replaceState(null, '', window.location.pathname)
+        
+        // 세션 복원
+        const { data: { session }, error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: hashParams.get('refresh_token') || '',
+        })
+        
+        if (session) {
+          console.log('✅ 세션 복원 성공')
+          await loadUser()
+        } else if (error) {
+          console.error('❌ 세션 복원 실패:', error)
+          setLoading(false)
+        }
+        return
+      }
+      
+      // 일반적인 사용자 확인
+      checkUser()
+    }
+
+    handleAuthCallback()
 
     const {
       data: { subscription },
