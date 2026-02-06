@@ -1,0 +1,79 @@
+from fastapi import FastAPI, Request, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from app.routers import assets, transactions, calculations, categories
+import traceback
+import logging
+
+# 로깅 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title="가족 자산관리 및 가계부 API",
+    description="FastAPI 기반 가족 자산관리 및 가계부 앱의 MVP 백엔드",
+    version="1.0.0",
+)
+
+# CORS 설정
+# 환경 변수에서 허용할 origin 목록 가져오기 (쉼표로 구분)
+import os
+from app.config import settings
+
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+]
+
+# 환경 변수에서 추가 origin 가져오기 (배포 환경용)
+if os.getenv("ALLOWED_ORIGINS"):
+    allowed_origins.extend(
+        origin.strip() for origin in os.getenv("ALLOWED_ORIGINS").split(",")
+    )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 전역 예외 핸들러
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """모든 예외를 처리하는 전역 핸들러"""
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "detail": str(exc),
+            "type": type(exc).__name__,
+            "traceback": traceback.format_exc() if app.debug else None,
+        },
+    )
+
+# 라우터 등록
+app.include_router(assets.router)
+app.include_router(transactions.router)
+app.include_router(calculations.router)
+app.include_router(categories.router)
+
+
+@app.get("/")
+async def root():
+    """루트 엔드포인트"""
+    return {
+        "message": "가족 자산관리 및 가계부 API",
+        "version": "1.0.0",
+        "docs": "/docs",
+    }
+
+
+@app.get("/health")
+async def health_check():
+    """헬스 체크 엔드포인트"""
+    return {"status": "healthy"}
