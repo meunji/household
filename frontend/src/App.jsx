@@ -82,8 +82,6 @@ function App() {
         
         // 프로덕션 환경에서 토큰 처리
         console.log('✅ 프로덕션 환경에서 토큰 처리')
-        // URL 해시 정리 (보안상)
-        window.history.replaceState(null, '', window.location.pathname)
         
         // 세션 복원
         const { data: { session }, error } = await supabase.auth.setSession({
@@ -92,8 +90,19 @@ function App() {
         })
         
         if (session) {
-          console.log('✅ 세션 복원 성공')
-          await loadUser()
+          console.log('✅ 세션 복원 성공, 사용자 정보 로드 중...')
+          // URL 해시 정리 (보안상) - 세션 복원 후에 정리
+          window.history.replaceState(null, '', window.location.pathname)
+          // 사용자 정보 로드
+          const currentUser = await getCurrentUser()
+          console.log('✅ 사용자 정보:', currentUser)
+          if (currentUser) {
+            setUser(currentUser)
+            setLoading(false)
+          } else {
+            console.warn('⚠️ 사용자 정보가 null입니다')
+            setLoading(false)
+          }
         } else if (error) {
           console.error('❌ 세션 복원 실패:', error)
           setLoading(false)
@@ -101,7 +110,7 @@ function App() {
         return
       }
       
-      // 일반적인 사용자 확인
+      // 일반적인 사용자 확인 (OAuth 콜백이 아닌 경우)
       checkUser()
     }
 
@@ -111,9 +120,19 @@ function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       console.log('Auth state changed:', _event, session ? 'has session' : 'no session')
-      if (session) {
+      
+      // OAuth 콜백 처리 중이면 onAuthStateChange는 무시 (중복 방지)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      if (hashParams.get('access_token')) {
+        console.log('⏭️ OAuth 콜백 처리 중이므로 onAuthStateChange 무시')
+        return
+      }
+      
+      if (session && _event === 'SIGNED_IN') {
+        console.log('✅ SIGNED_IN 이벤트, 사용자 정보 로드 중...')
         await loadUser()
-      } else {
+      } else if (!session && _event === 'SIGNED_OUT') {
+        console.log('👋 SIGNED_OUT 이벤트')
         setUser(null)
         setLoading(false)
       }
@@ -141,11 +160,13 @@ function App() {
 
   const loadUser = async () => {
     try {
+      console.log('🔄 사용자 정보 로드 시작...')
       const currentUser = await getCurrentUser()
+      console.log('✅ 사용자 정보 로드 완료:', currentUser)
       setUser(currentUser)
       setLoading(false)
     } catch (error) {
-      console.error('Error loading user:', error)
+      console.error('❌ 사용자 정보 로드 실패:', error)
       setUser(null)
       setLoading(false)
     }
