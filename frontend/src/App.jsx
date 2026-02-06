@@ -210,7 +210,7 @@ function App() {
   }
 
   return (
-    <Router>
+    <Router basename="/household">
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #FFF8F0 0%, #FFFBF5 100%)',

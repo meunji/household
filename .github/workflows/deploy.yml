@@ -40,7 +40,13 @@ jobs:
           VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:8000' }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-        run: npm run build
+        run: |
+          echo "Building with environment variables..."
+          echo "VITE_SUPABASE_URL is set: $([ -n "$VITE_SUPABASE_URL" ] && echo 'yes' || echo 'no')"
+          echo "VITE_SUPABASE_ANON_KEY is set: $([ -n "$VITE_SUPABASE_ANON_KEY" ] && echo 'yes' || echo 'no')"
+          npm run build
+          echo "Build completed. Checking dist folder..."
+          ls -la dist/ || echo "dist folder not found!"
       
       - name: Setup Pages
         uses: actions/configure-pages@v4
