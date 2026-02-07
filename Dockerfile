@@ -15,8 +15,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 애플리케이션 코드 복사
 COPY . .
 
-# 포트 노출
+# 포트 노출 (Railway가 동적으로 할당)
 EXPOSE 8000
 
-# 애플리케이션 실행
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Railway의 PORT 환경 변수를 사용하도록 쉘 형식으로 실행
+# PORT가 없으면 기본값 8000 사용
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
