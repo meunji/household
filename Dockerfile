@@ -20,5 +20,6 @@ EXPOSE 8000
 
 # Railway의 PORT 환경 변수를 사용하도록 쉘 형식으로 실행
 # PORT가 없으면 기본값 8000 사용
-# 쉘을 명시적으로 사용하여 환경 변수 확장 보장
-CMD ["/bin/sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Railway가 PORT 환경 변수를 자동으로 설정하므로, 기본값 8000 사용
+# 쉘 스크립트로 PORT 환경 변수 확인 및 사용
+CMD ["/bin/sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
