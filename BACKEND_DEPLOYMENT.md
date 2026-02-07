@@ -35,12 +35,14 @@ ALLOWED_ORIGINS=https://meunji.github.io
 #### 3단계: 배포 설정
 
 1. **Settings** 탭으로 이동
-2. **Python Version**: `3.11` 선택 (또는 `3.12`, Railway가 지원하는 버전)
-3. **Build Command**: `pip install -r requirements.txt`
-4. **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-5. **Root Directory**: (비워둠, 루트 사용)
+2. **Build Command**: (비워둠, Dockerfile 사용)
+3. **Start Command**: (비워둠, Dockerfile의 CMD 사용)
+4. **Root Directory**: (비워둠, 루트 사용)
 
-**참고**: `runtime.txt` 파일이 프로젝트 루트에 있으면 자동으로 Python 버전을 인식합니다.
+**참고**: 
+- `Dockerfile`이 있으면 Railway가 자동으로 사용합니다
+- `runtime.txt` 파일도 있으면 Python 버전을 인식합니다
+- Nixpacks 대신 Dockerfile을 사용하면 더 안정적입니다
 
 #### 4단계: 도메인 확인
 
