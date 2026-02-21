@@ -100,10 +100,27 @@ function App() {
           tokenLength: accessToken?.length 
         })
         
-        // setSession을 비동기로 호출하고 onAuthStateChange가 처리하도록 함
-        console.log('🔄 setSession 호출 (onAuthStateChange가 세션 감지 예정)...')
+        // Supabase가 URL 해시의 토큰을 자동으로 처리할 수 있도록
+        // 먼저 getSession을 호출해보고, 실패하면 setSession 사용
+        console.log('🔄 getSession으로 먼저 확인 (Supabase가 자동 처리했을 수 있음)...')
         
-        // URL 해시를 먼저 정리 (보안상)
+        // URL 해시를 정리하기 전에 getSession 먼저 시도
+        const { data: { session: existingSession }, error: getSessionError } = await supabase.auth.getSession()
+        
+        if (existingSession?.user) {
+          console.log('✅ getSession으로 세션 확인 성공:', existingSession.user.email)
+          // URL 해시 정리 (보안상)
+          window.history.replaceState(null, '', window.location.pathname)
+          setUser({ id: existingSession.user.id, email: existingSession.user.email || '' })
+          setLoading(false)
+          setIsHandlingCallback(false)
+          return
+        }
+        
+        console.log('🔄 getSession으로 세션 없음, setSession 시도...')
+        console.log('🔄 getSessionError:', getSessionError)
+        
+        // URL 해시를 정리 (보안상) - setSession 전에 정리
         window.history.replaceState(null, '', window.location.pathname)
         
         // 백업 타임아웃 설정 (5초)
