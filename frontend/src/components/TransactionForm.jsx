@@ -44,9 +44,9 @@ export default function TransactionForm() {
       setLoading(true)
       setError(null)
       
-      // 타임아웃 추가 (10초)
+      // 타임아웃 추가 (30초)
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('데이터 로딩 타임아웃')), 10000)
+        setTimeout(() => reject(new Error('데이터 로딩 타임아웃')), 30000)
       )
       
       const data = await Promise.race([
@@ -70,31 +70,54 @@ export default function TransactionForm() {
     setSubmitting(true)
 
     try {
-      // 타임아웃 추가 (10초)
+      // 타임아웃 추가 (30초)
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('등록 타임아웃')), 10000)
+        setTimeout(() => reject(new Error('등록 타임아웃')), 30000)
       )
       
-      await Promise.race([
-        transactionService.createTransaction({
-          type: formData.type,
-          amount: parseFloat(formData.amount),
-          category_id: formData.category_id,
-          date: formData.date,
-          memo: formData.memo || null,
-        }),
-        timeoutPromise,
-      ])
-      
-      setFormData({
-        type: 'INCOME',
-        amount: '',
-        category_id: '',
-        date: new Date().toISOString().split('T')[0],
-        memo: '',
-      })
-      
-      await loadTransactions()
+      try {
+        await Promise.race([
+          transactionService.createTransaction({
+            type: formData.type,
+            amount: parseFloat(formData.amount),
+            category_id: formData.category_id,
+            date: formData.date,
+            memo: formData.memo || null,
+          }),
+          timeoutPromise,
+        ])
+        
+        setFormData({
+          type: 'INCOME',
+          amount: '',
+          category_id: '',
+          date: new Date().toISOString().split('T')[0],
+          memo: '',
+        })
+        
+        // 등록 성공 후 데이터 다시 로드
+        await loadTransactions()
+      } catch (timeoutErr) {
+        // 타임아웃 발생 시에도 데이터가 등록되었을 수 있으므로 다시 로드 시도
+        if (timeoutErr.message === '등록 타임아웃') {
+          console.warn('⚠️ 등록 타임아웃 발생, 데이터 다시 로드 시도...')
+          // 폼은 리셋하고 데이터만 다시 로드
+          setFormData({
+            type: 'INCOME',
+            amount: '',
+            category_id: '',
+            date: new Date().toISOString().split('T')[0],
+            memo: '',
+          })
+          // 백그라운드에서 데이터 다시 로드 (에러 무시)
+          loadTransactions().catch(() => {
+            // 무시
+          })
+          // 타임아웃 에러를 다시 throw하여 사용자에게 알림
+          throw timeoutErr
+        }
+        throw timeoutErr
+      }
     } catch (err) {
       console.error('거래 등록 오류:', err)
       setError(err.message || '거래 등록 중 오류가 발생했습니다.')

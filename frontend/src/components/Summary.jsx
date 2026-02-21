@@ -20,9 +20,9 @@ export default function Summary() {
       setLoading(true)
       setError(null)
       
-      // 타임아웃 추가 (10초)
+      // 타임아웃 추가 (30초)
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('데이터 로딩 타임아웃')), 10000)
+        setTimeout(() => reject(new Error('데이터 로딩 타임아웃')), 30000)
       )
       
       const [summaryData, monthlyData] = await Promise.race([
