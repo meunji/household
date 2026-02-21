@@ -77,7 +77,7 @@ function App() {
           return
         }
         
-        callbackHandledRef.current = true
+        // callbackHandledRef는 성공적으로 처리된 후에 설정
         setIsHandlingCallback(true)
         console.log('🔍 OAuth 콜백 감지, 토큰 처리 중...')
         
@@ -105,10 +105,19 @@ function App() {
         console.log('🔄 getSession으로 먼저 확인 (Supabase가 자동 처리했을 수 있음)...')
         
         // URL 해시를 정리하기 전에 getSession 먼저 시도
+        console.log('🔄 getSession 호출 시작...')
         const { data: { session: existingSession }, error: getSessionError } = await supabase.auth.getSession()
+        console.log('🔄 getSession 응답:', { 
+          hasSession: !!existingSession, 
+          hasUser: !!existingSession?.user,
+          userEmail: existingSession?.user?.email,
+          error: getSessionError?.message 
+        })
         
         if (existingSession?.user) {
           console.log('✅ getSession으로 세션 확인 성공:', existingSession.user.email)
+          // 성공적으로 처리됨을 표시 (중복 호출 방지)
+          callbackHandledRef.current = true
           // URL 해시 정리 (보안상)
           window.history.replaceState(null, '', window.location.pathname)
           setUser({ id: existingSession.user.id, email: existingSession.user.email || '' })
@@ -137,6 +146,7 @@ function App() {
               
               if (session?.user) {
                 console.log('✅ 타임아웃 후 getSession 성공:', session.user.email)
+                callbackHandledRef.current = true
                 setUser({ id: session.user.id, email: session.user.email || '' })
                 setLoading(false)
                 setIsHandlingCallback(false)
@@ -178,6 +188,8 @@ function App() {
           
           if (session?.user) {
             console.log('✅ setSession 성공, 사용자 정보 설정 중...')
+            // 성공적으로 처리됨을 표시
+            callbackHandledRef.current = true
             // 타임아웃 취소
             clearTimeout(timeoutId)
             // setSession 성공 시 즉시 사용자 설정
@@ -232,6 +244,7 @@ function App() {
             
             if (retrySession?.user) {
               console.log('✅ getSession으로 세션 확인 성공:', retrySession.user.email)
+              callbackHandledRef.current = true
               clearTimeout(timeoutId)
               setUser({ id: retrySession.user.id, email: retrySession.user.email || '' })
               setLoading(false)
@@ -294,7 +307,13 @@ function App() {
       }
     }
 
-    handleAuthCallback()
+    // handleAuthCallback을 즉시 실행 (비동기이지만 await 없이)
+    // 중복 호출 방지는 callbackHandledRef로 처리됨
+    handleAuthCallback().catch((err) => {
+      console.error('❌ handleAuthCallback 오류:', err)
+      setLoading(false)
+      setIsHandlingCallback(false)
+    })
 
     const {
       data: { subscription },
