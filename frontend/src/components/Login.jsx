@@ -78,87 +78,110 @@ export default function Login({ onLoginSuccess }) {
       borderRadius: '24px',
       boxShadow: '0 8px 32px rgba(93, 64, 55, 0.12)',
       border: '1px solid rgba(255, 138, 128, 0.1)',
+      position: 'relative',
+      overflow: 'hidden',
+      minHeight: '500px',
     }}>
+      {/* 배경 이미지 */}
       <div style={{
-        textAlign: 'center',
-        marginBottom: '32px',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundImage: `url(${import.meta.env.BASE_URL}img/fam.jpg)`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        opacity: 0.9,
+        zIndex: 0,
+      }} />
+      
+      {/* 오버레이 그라데이션 (텍스트 가독성 향상) */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.7) 50%, rgba(255, 255, 255, 0.9) 100%)',
+        zIndex: 1,
+      }} />
+      
+      {/* 콘텐츠 영역 */}
+      <div style={{
+        position: 'relative',
+        zIndex: 2,
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
       }}>
         <div style={{
-          marginBottom: '16px',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
+          textAlign: 'center',
+          marginBottom: '32px',
+          marginTop: '20px',
         }}>
-          <img 
-            src={`${import.meta.env.BASE_URL}img/fam.jpg`}
-            alt="가족" 
-            style={{
-              maxWidth: '200px',
-              maxHeight: '200px',
-              width: 'auto',
-              height: 'auto',
-              borderRadius: '16px',
-              objectFit: 'contain',
-            }}
-          />
-        </div>
-        <h2 style={{
-          fontSize: '28px',
-          fontWeight: '700',
-          color: '#5D4037',
-          marginBottom: '8px',
-        }}>잘살아보세</h2>
-      </div>
-      
-      {error && (
-        <div style={{
-          marginBottom: '24px',
-          padding: '20px',
-          backgroundColor: '#FFF3E0',
-          border: '2px solid #FFB3B0',
-          borderRadius: '16px',
-          color: '#C62828',
-          fontSize: '14px',
-          whiteSpace: 'pre-line',
-          lineHeight: '1.6',
-        }}>
-          <div style={{
-            fontSize: '20px',
-            marginBottom: '8px',
-          }}>⚠️</div>
-          <strong style={{
-            display: 'block',
-            marginBottom: '8px',
+          <h2 style={{
+            fontSize: '32px',
+            fontWeight: '700',
             color: '#5D4037',
-          }}>오류 발생</strong>
-          {error}
+            marginBottom: '8px',
+            textShadow: '0 2px 4px rgba(255, 255, 255, 0.8)',
+          }}>잘살아보세</h2>
         </div>
-      )}
       
-      <button
-        onClick={handleGoogleLogin}
-        disabled={loading}
-        style={{
-          width: '100%',
-          padding: '16px 24px',
-          background: loading
-            ? 'linear-gradient(135deg, #E0E0E0 0%, #BDBDBD 100%)'
-            : 'linear-gradient(135deg, #4285f4 0%, #357ae8 100%)',
-          color: '#FFFFFF',
-          border: 'none',
-          borderRadius: '16px',
-          cursor: loading ? 'not-allowed' : 'pointer',
-          fontSize: '16px',
-          fontWeight: '600',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '12px',
-          transition: 'all 0.3s ease',
-          boxShadow: loading
-            ? 'none'
-            : '0 4px 12px rgba(66, 133, 244, 0.3)',
-        }}
+        {error && (
+          <div style={{
+            marginBottom: '24px',
+            padding: '20px',
+            backgroundColor: 'rgba(255, 243, 224, 0.95)',
+            border: '2px solid #FFB3B0',
+            borderRadius: '16px',
+            color: '#C62828',
+            fontSize: '14px',
+            whiteSpace: 'pre-line',
+            lineHeight: '1.6',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+          }}>
+            <div style={{
+              fontSize: '20px',
+              marginBottom: '8px',
+            }}>⚠️</div>
+            <strong style={{
+              display: 'block',
+              marginBottom: '8px',
+              color: '#5D4037',
+            }}>오류 발생</strong>
+            {error}
+          </div>
+        )}
+      
+        <button
+          onClick={handleGoogleLogin}
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '16px 24px',
+            background: loading
+              ? 'linear-gradient(135deg, #E0E0E0 0%, #BDBDBD 100%)'
+              : 'linear-gradient(135deg, #4285f4 0%, #357ae8 100%)',
+            color: '#FFFFFF',
+            border: 'none',
+            borderRadius: '16px',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontSize: '16px',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+            transition: 'all 0.3s ease',
+            boxShadow: loading
+              ? 'none'
+              : '0 4px 12px rgba(66, 133, 244, 0.4)',
+            position: 'relative',
+            zIndex: 2,
+          }}
         onMouseEnter={(e) => {
           if (!loading) {
             e.currentTarget.style.transform = 'translateY(-2px)'
@@ -205,15 +228,20 @@ export default function Login({ onLoginSuccess }) {
         )}
       </button>
       
-      <div style={{
-        marginTop: '24px',
-        textAlign: 'center',
-        color: '#8D6E63',
-        fontSize: '14px',
-        lineHeight: '1.6',
-      }}>
-        <div style={{ marginBottom: '4px' }}>🔒 안전하게 보호되는 데이터</div>
-        <div>Google 계정으로 간편하게 시작하세요</div>
+        <div style={{
+          marginTop: '24px',
+          textAlign: 'center',
+          color: '#5D4037',
+          fontSize: '14px',
+          lineHeight: '1.6',
+          backgroundColor: 'rgba(255, 255, 255, 0.8)',
+          padding: '12px',
+          borderRadius: '12px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+        }}>
+          <div style={{ marginBottom: '4px', fontWeight: '600' }}>🔒 안전하게 보호되는 데이터</div>
+          <div>Google 계정으로 간편하게 시작하세요</div>
+        </div>
       </div>
     </div>
   )
