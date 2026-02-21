@@ -106,7 +106,7 @@ export default function Login({ onLoginSuccess }) {
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
-        opacity: 0.95,
+        opacity: 1.0,
         zIndex: 0,
       }} />
       
@@ -117,7 +117,7 @@ export default function Login({ onLoginSuccess }) {
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.8) 100%)',
+        background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.4) 50%, rgba(255, 255, 255, 0.65) 100%)',
         zIndex: 1,
       }} />
       
@@ -138,11 +138,9 @@ export default function Login({ onLoginSuccess }) {
             fontSize: isMobile ? '28px' : '32px',
             fontWeight: '400',
             fontFamily: "'Jua', 'Dongle', 'Noto Sans KR', sans-serif",
-            background: 'linear-gradient(135deg, #E1BEE7 0%, #CE93D8 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            color: '#E1BEE7',
             marginBottom: '8px',
-            textShadow: '0 2px 4px rgba(255, 255, 255, 0.9)',
+            textShadow: '0 2px 8px rgba(255, 255, 255, 0.95), 0 1px 3px rgba(0, 0, 0, 0.1)',
             letterSpacing: '0.5px',
           }}>잘살아보세</h2>
         </div>
