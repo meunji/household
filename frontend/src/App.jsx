@@ -77,7 +77,8 @@ function App() {
           return
         }
         
-        // callbackHandledRef는 성공적으로 처리된 후에 설정
+        // 처리 시작 시점에 즉시 플래그 설정하여 중복 호출 방지
+        callbackHandledRef.current = true
         setIsHandlingCallback(true)
         console.log('🔍 OAuth 콜백 감지, 토큰 처리 중...')
         
@@ -116,13 +117,12 @@ function App() {
         
         if (existingSession?.user) {
           console.log('✅ getSession으로 세션 확인 성공:', existingSession.user.email)
-          // 성공적으로 처리됨을 표시 (중복 호출 방지)
-          callbackHandledRef.current = true
           // URL 해시 정리 (보안상)
           window.history.replaceState(null, '', window.location.pathname)
           setUser({ id: existingSession.user.id, email: existingSession.user.email || '' })
           setLoading(false)
           setIsHandlingCallback(false)
+          // callbackHandledRef는 이미 true로 설정되어 있음
           return
         }
         
