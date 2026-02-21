@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
 import { supabase, getCurrentUser } from './auth/supabase'
 import Login from './components/Login'
@@ -64,22 +64,21 @@ function App() {
   const [isHandlingCallback, setIsHandlingCallback] = useState(false)
   const callbackHandledRef = useRef(false)
 
-  useEffect(() => {
-    // OAuth 리디렉션 후 URL 해시에서 토큰 처리
-    const handleAuthCallback = async () => {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1))
-      const accessToken = hashParams.get('access_token')
+  // handleAuthCallback을 useCallback으로 메모이제이션하여 중복 호출 방지
+  const handleAuthCallback = useCallback(async () => {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1))
+    const accessToken = hashParams.get('access_token')
+    
+    if (accessToken) {
+      // 중복 처리 방지 (useRef 사용)
+      if (callbackHandledRef.current) {
+        console.log('⏭️ OAuth 콜백 이미 처리됨, 무시')
+        return
+      }
       
-      if (accessToken) {
-        // 중복 처리 방지 (useRef 사용)
-        if (callbackHandledRef.current) {
-          console.log('⏭️ OAuth 콜백 이미 처리됨, 무시')
-          return
-        }
-        
-        callbackHandledRef.current = true
-        setIsHandlingCallback(true)
-        console.log('🔍 OAuth 콜백 감지, 토큰 처리 중...')
+      callbackHandledRef.current = true
+      setIsHandlingCallback(true)
+      console.log('🔍 OAuth 콜백 감지, 토큰 처리 중...')
         
         // localhost로 리디렉션된 경우 프로덕션 URL로 자동 리디렉션
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -172,13 +171,19 @@ function App() {
           }
         }, 10000)
         
+        // setSession 호출 후 onAuthStateChange가 처리할 때까지 로딩 상태 유지
+        // return으로 함수 종료하여 "초기 로딩 완료" 로그가 나오지 않도록 함
+        // 로딩 상태는 onAuthStateChange에서 처리할 때까지 유지
         return
       }
       
       // OAuth 콜백이 아닌 경우: 로딩을 즉시 종료하고 로그인 화면 표시
       // 사용자가 로그인 버튼을 눌렀을 때만 인증 확인
-      console.log('ℹ️ 초기 로딩 완료, 로그인 화면 표시')
-      setLoading(false)
+      // OAuth 콜백 처리 중이 아닐 때만 실행
+      if (!isHandlingCallback) {
+        console.log('ℹ️ 초기 로딩 완료, 로그인 화면 표시')
+        setLoading(false)
+      }
       
       // 백그라운드에서 빠른 세션 확인 (비동기, 로딩 상태에 영향 없음)
       supabase.auth.getSession().then(({ data: { session } }) => {
@@ -192,7 +197,9 @@ function App() {
         console.log('ℹ️ 세션 확인 중 오류 (무시):', error)
       })
     }
+  }, [])
 
+  useEffect(() => {
     handleAuthCallback()
 
     const {
@@ -228,7 +235,7 @@ function App() {
     })
 
     return () => subscription.unsubscribe()
-  }, [isHandlingCallback])
+  }, [isHandlingCallback, handleAuthCallback])
 
   const checkUser = async () => {
     try {
