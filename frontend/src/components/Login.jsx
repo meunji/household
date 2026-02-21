@@ -84,9 +84,24 @@ export default function Login({ onLoginSuccess }) {
         marginBottom: '32px',
       }}>
         <div style={{
-          fontSize: '48px',
           marginBottom: '16px',
-        }}>👋</div>
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}>
+          <img 
+            src={`${import.meta.env.BASE_URL}img/fam.jpg`}
+            alt="가족" 
+            style={{
+              maxWidth: '200px',
+              maxHeight: '200px',
+              width: 'auto',
+              height: 'auto',
+              borderRadius: '16px',
+              objectFit: 'contain',
+            }}
+          />
+        </div>
         <h2 style={{
           fontSize: '28px',
           fontWeight: '700',
