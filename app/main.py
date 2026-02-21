@@ -10,6 +10,19 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# 시작 시 환경 변수 확인
+try:
+    from app.config import settings
+    logger.info("환경 변수 확인:")
+    logger.info(f"  DATABASE_URL: {'설정됨' if settings.database_url else '누락됨'}")
+    logger.info(f"  SUPABASE_URL: {'설정됨' if settings.supabase_url else '누락됨'}")
+    logger.info(f"  SUPABASE_KEY: {'설정됨' if settings.supabase_key else '누락됨'}")
+    logger.info(f"  SUPABASE_SERVICE_KEY: {'설정됨' if settings.supabase_service_key else '누락됨 (선택사항)'}")
+    logger.info(f"  ENVIRONMENT: {settings.environment}")
+except Exception as e:
+    logger.error(f"환경 변수 로드 실패: {e}")
+    raise
+
 app = FastAPI(
     title="가족 자산관리 및 가계부 API",
     description="FastAPI 기반 가족 자산관리 및 가계부 앱의 MVP 백엔드",

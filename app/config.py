@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     supabase_key: str
     supabase_service_key: Optional[str] = None  # Admin API용 서비스 키
     environment: str = "development"
-
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
