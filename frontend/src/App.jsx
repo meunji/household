@@ -653,12 +653,14 @@ function App() {
           }}>🏠</div>
           <h1 style={{
             fontSize: '32px',
-            fontWeight: '700',
+            fontWeight: '500',
+            fontFamily: "'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif",
             color: '#5D4037',
             marginBottom: '8px',
             background: 'linear-gradient(135deg, #FF8A80 0%, #FF6B6B 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
+            letterSpacing: '-0.5px',
           }}>아은이네 부자되기</h1>
         </div>
         <Login onLoginSuccess={handleLoginSuccess} />
@@ -697,11 +699,13 @@ function App() {
               <h1 style={{
                 margin: 0,
                 fontSize: '24px',
-                fontWeight: '700',
+                fontWeight: '500',
+                fontFamily: "'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif",
                 color: '#5D4037',
                 background: 'linear-gradient(135deg, #FF8A80 0%, #FF6B6B 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
+                letterSpacing: '-0.5px',
               }}>아은이네 부자되기</h1>
             </div>
             <div style={{

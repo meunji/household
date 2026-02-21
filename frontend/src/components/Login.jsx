@@ -80,7 +80,9 @@ export default function Login({ onLoginSuccess }) {
       border: '1px solid rgba(255, 138, 128, 0.1)',
       position: 'relative',
       overflow: 'hidden',
-      minHeight: '500px',
+      minHeight: '600px',
+      display: 'flex',
+      flexDirection: 'column',
     }}>
       {/* 배경 이미지 */}
       <div style={{
@@ -93,7 +95,7 @@ export default function Login({ onLoginSuccess }) {
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
-        opacity: 0.9,
+        opacity: 0.95,
         zIndex: 0,
       }} />
       
@@ -104,7 +106,7 @@ export default function Login({ onLoginSuccess }) {
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.7) 50%, rgba(255, 255, 255, 0.9) 100%)',
+        background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.8) 100%)',
         zIndex: 1,
       }} />
       
@@ -123,10 +125,12 @@ export default function Login({ onLoginSuccess }) {
         }}>
           <h2 style={{
             fontSize: '32px',
-            fontWeight: '700',
+            fontWeight: '500',
+            fontFamily: "'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif",
             color: '#5D4037',
             marginBottom: '8px',
             textShadow: '0 2px 4px rgba(255, 255, 255, 0.8)',
+            letterSpacing: '-0.5px',
           }}>잘살아보세</h2>
         </div>
       
@@ -156,12 +160,15 @@ export default function Login({ onLoginSuccess }) {
           </div>
         )}
       
+        <div style={{ flex: 1 }} /> {/* 공간 확보 */}
+        
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
           style={{
             width: '100%',
             padding: '16px 24px',
+            marginTop: 'auto',
             background: loading
               ? 'linear-gradient(135deg, #E0E0E0 0%, #BDBDBD 100%)'
               : 'linear-gradient(135deg, #4285f4 0%, #357ae8 100%)',
