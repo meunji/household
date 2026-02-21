@@ -101,6 +101,24 @@ function App() {
           tokenLength: accessToken?.length 
         })
         
+        // JWT 토큰에서 사용자 정보 직접 추출 (Supabase API가 응답하지 않는 경우 대비)
+        let userId = null
+        let userEmail = null
+        
+        try {
+          // JWT 토큰은 base64url로 인코딩된 3부분으로 구성: header.payload.signature
+          const tokenParts = accessToken.split('.')
+          if (tokenParts.length === 3) {
+            // payload 부분 디코딩
+            const payload = JSON.parse(atob(tokenParts[1].replace(/-/g, '+').replace(/_/g, '/')))
+            userId = payload.sub || payload.user_id
+            userEmail = payload.email
+            console.log('🔑 JWT 토큰에서 사용자 정보 추출:', { userId, userEmail })
+          }
+        } catch (err) {
+          console.warn('⚠️ JWT 토큰 디코딩 실패:', err)
+        }
+        
         // Supabase가 URL 해시의 토큰을 자동으로 처리할 수 있도록
         // 먼저 getSession을 호출해보고, 실패하면 setSession 사용
         console.log('🔄 getSession으로 먼저 확인 (Supabase가 자동 처리했을 수 있음)...')
@@ -145,6 +163,34 @@ function App() {
         
         console.log('🔄 getSession으로 세션 없음 또는 타임아웃, setSession 시도...')
         console.log('🔄 getSessionError:', getSessionError)
+        
+        // getSession이 실패했지만 JWT에서 사용자 정보를 추출했다면, 직접 사용자 설정
+        if (userId && userEmail) {
+          console.log('✅ JWT 토큰에서 사용자 정보 추출 성공, 직접 설정 시도...')
+          // URL 해시 정리 (보안상)
+          window.history.replaceState(null, '', window.location.pathname)
+          
+          // setSession을 백그라운드에서 시도하되, 사용자는 즉시 설정
+          setUser({ id: userId, email: userEmail })
+          setLoading(false)
+          setIsHandlingCallback(false)
+          
+          // 백그라운드에서 setSession 시도 (세션 유지를 위해)
+          supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          }).then(({ data: { session }, error }) => {
+            if (session?.user) {
+              console.log('✅ 백그라운드 setSession 성공')
+            } else if (error) {
+              console.warn('⚠️ 백그라운드 setSession 실패 (무시):', error.message)
+            }
+          }).catch((err) => {
+            console.warn('⚠️ 백그라운드 setSession 오류 (무시):', err.message)
+          })
+          
+          return
+        }
         
         // URL 해시를 정리 (보안상) - setSession 전에 정리
         window.history.replaceState(null, '', window.location.pathname)
