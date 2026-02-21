@@ -20,9 +20,17 @@ export default function Summary() {
       setLoading(true)
       setError(null)
       
-      const [summaryData, monthlyData] = await Promise.all([
-        calculationService.getSummary(),
-        calculationService.getMonthlySummary(),
+      // 타임아웃 추가 (10초)
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('데이터 로딩 타임아웃')), 10000)
+      )
+      
+      const [summaryData, monthlyData] = await Promise.race([
+        Promise.all([
+          calculationService.getSummary(),
+          calculationService.getMonthlySummary(),
+        ]),
+        timeoutPromise,
       ])
       
       setSummary(summaryData)

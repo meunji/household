@@ -7,6 +7,7 @@ import { transactionService, categoryService } from '../api/services'
 export default function TransactionForm() {
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
   const [error, setError] = useState(null)
   const [categories, setCategories] = useState([])
@@ -41,10 +42,23 @@ export default function TransactionForm() {
   const loadTransactions = async () => {
     try {
       setLoading(true)
-      const data = await transactionService.getTransactions()
+      setError(null)
+      
+      // 타임아웃 추가 (10초)
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('데이터 로딩 타임아웃')), 10000)
+      )
+      
+      const data = await Promise.race([
+        transactionService.getTransactions(),
+        timeoutPromise,
+      ])
+      
       setTransactions(data)
     } catch (err) {
-      setError(err.message)
+      console.error('거래 로드 오류:', err)
+      setError(err.message || '거래를 불러오는 중 오류가 발생했습니다.')
+      setTransactions([]) // 오류 시 빈 배열로 설정
     } finally {
       setLoading(false)
     }
@@ -53,15 +67,24 @@ export default function TransactionForm() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
+    setSubmitting(true)
 
     try {
-      await transactionService.createTransaction({
-        type: formData.type,
-        amount: parseFloat(formData.amount),
-        category_id: formData.category_id,
-        date: formData.date,
-        memo: formData.memo || null,
-      })
+      // 타임아웃 추가 (10초)
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('등록 타임아웃')), 10000)
+      )
+      
+      await Promise.race([
+        transactionService.createTransaction({
+          type: formData.type,
+          amount: parseFloat(formData.amount),
+          category_id: formData.category_id,
+          date: formData.date,
+          memo: formData.memo || null,
+        }),
+        timeoutPromise,
+      ])
       
       setFormData({
         type: 'INCOME',
@@ -73,7 +96,10 @@ export default function TransactionForm() {
       
       await loadTransactions()
     } catch (err) {
-      setError(err.message)
+      console.error('거래 등록 오류:', err)
+      setError(err.message || '거래 등록 중 오류가 발생했습니다.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -324,38 +350,38 @@ export default function TransactionForm() {
           
           <button
             type="submit"
-            disabled={loading}
+            disabled={submitting || loading}
             style={{
               width: '100%',
               padding: '16px',
-              background: loading
+              background: (submitting || loading)
                 ? 'linear-gradient(135deg, #E0E0E0 0%, #BDBDBD 100%)'
                 : 'linear-gradient(135deg, #FF8A80 0%, #FF6B6B 100%)',
               color: '#FFFFFF',
               border: 'none',
               borderRadius: '12px',
-              cursor: loading ? 'not-allowed' : 'pointer',
+              cursor: (submitting || loading) ? 'not-allowed' : 'pointer',
               fontWeight: '600',
               fontSize: '16px',
               transition: 'all 0.3s ease',
-              boxShadow: loading
+              boxShadow: (submitting || loading)
                 ? 'none'
                 : '0 4px 12px rgba(255, 138, 128, 0.3)',
             }}
             onMouseEnter={(e) => {
-              if (!loading) {
+              if (!submitting && !loading) {
                 e.currentTarget.style.transform = 'translateY(-2px)'
                 e.currentTarget.style.boxShadow = '0 6px 16px rgba(255, 138, 128, 0.4)'
               }
             }}
             onMouseLeave={(e) => {
-              if (!loading) {
+              if (!submitting && !loading) {
                 e.currentTarget.style.transform = 'translateY(0)'
                 e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 138, 128, 0.3)'
               }
             }}
           >
-            {loading ? '등록 중...' : '✅ 등록하기'}
+            {submitting ? '등록 중...' : '✅ 등록하기'}
           </button>
         </form>
       </div>

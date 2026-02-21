@@ -719,9 +719,9 @@ function App() {
         {/* 라우트 */}
         <Routes>
           <Route path="/" element={<Navigate to="/summary" replace />} />
-          <Route path="/summary" element={<Summary />} />
-          <Route path="/assets" element={<AssetForm />} />
-          <Route path="/transactions" element={<TransactionForm />} />
+          <Route path="/summary" element={<Summary key={user?.id} />} />
+          <Route path="/assets" element={<AssetForm key={user?.id} />} />
+          <Route path="/transactions" element={<TransactionForm key={user?.id} />} />
         </Routes>
       </div>
     </Router>
