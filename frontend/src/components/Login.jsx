@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../auth/supabase'
 
 /**
@@ -7,6 +7,16 @@ import { supabase } from '../auth/supabase'
 export default function Login({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   const handleGoogleLogin = async () => {
     setLoading(true)
@@ -73,14 +83,15 @@ export default function Login({ onLoginSuccess }) {
     <div style={{
       width: '100%',
       maxWidth: '420px',
-      padding: '40px 40px 20px 40px',
+      padding: isMobile ? '24px 24px 16px 24px' : '40px 40px 20px 40px',
       backgroundColor: '#FFFFFF',
       borderRadius: '24px',
       boxShadow: '0 8px 32px rgba(93, 64, 55, 0.12)',
       border: '1px solid rgba(255, 138, 128, 0.1)',
       position: 'relative',
       overflow: 'hidden',
-      minHeight: '600px',
+      minHeight: isMobile ? '400px' : '600px',
+      maxHeight: isMobile ? '100vh' : 'none',
       display: 'flex',
       flexDirection: 'column',
     }}>
@@ -120,19 +131,19 @@ export default function Login({ onLoginSuccess }) {
       }}>
         <div style={{
           textAlign: 'center',
-          marginBottom: '32px',
-          marginTop: '10px',
+          marginBottom: isMobile ? '20px' : '32px',
+          marginTop: isMobile ? '5px' : '10px',
         }}>
           <h2 style={{
-            fontSize: '32px',
-            fontWeight: '500',
-            fontFamily: "'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif",
-            background: 'linear-gradient(135deg, #CE93D8 0%, #BA68C8 100%)',
+            fontSize: isMobile ? '28px' : '32px',
+            fontWeight: '400',
+            fontFamily: "'Jua', 'Dongle', 'Noto Sans KR', sans-serif",
+            background: 'linear-gradient(135deg, #E1BEE7 0%, #CE93D8 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             marginBottom: '8px',
             textShadow: '0 2px 4px rgba(255, 255, 255, 0.9)',
-            letterSpacing: '-0.5px',
+            letterSpacing: '0.5px',
           }}>잘살아보세</h2>
         </div>
       
@@ -170,12 +181,13 @@ export default function Login({ onLoginSuccess }) {
         onClick={handleGoogleLogin}
         disabled={loading}
         style={{
-          width: 'calc(100% - 80px)',
-          padding: '16px 24px',
+          width: isMobile ? 'calc(100% - 48px)' : 'calc(100% - 80px)',
+          padding: isMobile ? '14px 20px' : '16px 24px',
           position: 'absolute',
-          bottom: '32px',
-          left: '40px',
-          right: '40px',
+          bottom: isMobile ? '16px' : '32px',
+          left: isMobile ? '24px' : '40px',
+          right: isMobile ? '24px' : '40px',
+          fontSize: isMobile ? '14px' : '16px',
           background: loading
             ? 'linear-gradient(135deg, #E0E0E0 0%, #BDBDBD 100%)'
             : 'linear-gradient(135deg, #4285f4 0%, #357ae8 100%)',

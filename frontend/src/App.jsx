@@ -63,7 +63,17 @@ function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isHandlingCallback, setIsHandlingCallback] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const callbackHandledRef = useRef(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     // OAuth 리디렉션 후 URL 해시에서 토큰 처리
@@ -641,15 +651,15 @@ function App() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px',
+        padding: isMobile ? '10px' : '20px',
       }}>
         <div style={{
           textAlign: 'center',
-          marginBottom: '40px',
+          marginBottom: isMobile ? '20px' : '40px',
         }}>
           <div style={{
-            fontSize: '64px',
-            marginBottom: '20px',
+            fontSize: isMobile ? '48px' : '64px',
+            marginBottom: isMobile ? '10px' : '20px',
           }}>🏠</div>
           <h1 style={{
             fontSize: '32px',
