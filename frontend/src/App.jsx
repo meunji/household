@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
 import { supabase, getCurrentUser } from './auth/supabase'
 import Login from './components/Login'
@@ -62,7 +62,7 @@ function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isHandlingCallback, setIsHandlingCallback] = useState(false)
-  const [callbackHandled, setCallbackHandled] = useState(false)
+  const callbackHandledRef = useRef(false)
 
   useEffect(() => {
     // OAuth 리디렉션 후 URL 해시에서 토큰 처리
@@ -71,13 +71,13 @@ function App() {
       const accessToken = hashParams.get('access_token')
       
       if (accessToken) {
-        // 중복 처리 방지
-        if (callbackHandled) {
+        // 중복 처리 방지 (useRef 사용)
+        if (callbackHandledRef.current) {
           console.log('⏭️ OAuth 콜백 이미 처리됨, 무시')
           return
         }
         
-        setCallbackHandled(true)
+        callbackHandledRef.current = true
         setIsHandlingCallback(true)
         console.log('🔍 OAuth 콜백 감지, 토큰 처리 중...')
         
@@ -100,20 +100,18 @@ function App() {
           tokenLength: accessToken?.length 
         })
         
-        // setSession으로 세션 복원 시도 (URL 해시 정리 전에 먼저 처리)
-        console.log('🔄 setSession으로 세션 복원 시도...')
+        // setSession을 비동기로 호출하고 onAuthStateChange가 처리하도록 함
+        console.log('🔄 setSession 호출 (onAuthStateChange가 세션 감지 예정)...')
         
-        try {
-          const { data: { session }, error } = await Promise.race([
-            supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            }),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('타임아웃')), 5000)
-            )
-          ])
-          
+        // URL 해시를 먼저 정리 (보안상)
+        window.history.replaceState(null, '', window.location.pathname)
+        
+        // setSession을 비동기로 호출 (타임아웃 없이)
+        // onAuthStateChange가 SIGNED_IN 이벤트를 트리거할 것임
+        supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        }).then(({ data: { session }, error }) => {
           console.log('🔄 setSession 응답:', { 
             hasSession: !!session, 
             hasUser: !!session?.user,
@@ -122,54 +120,58 @@ function App() {
           })
           
           if (session?.user) {
-            console.log('✅ 세션 복원 성공:', session.user.email)
-            // URL 해시 정리 (보안상) - 세션 설정 후에 정리
-            window.history.replaceState(null, '', window.location.pathname)
-            setUser({ id: session.user.id, email: session.user.email || '' })
-            setLoading(false)
-            setIsHandlingCallback(false)
-            console.log('✅ 로딩 완료, 사용자 설정됨')
-            return
+            console.log('✅ setSession 성공, onAuthStateChange가 처리할 예정')
           } else if (error) {
-            console.error('❌ 세션 복원 실패:', error)
-            console.error('❌ 에러 상세:', error)
+            console.error('❌ setSession 실패:', error)
+            // 실패 시 getSession으로 재확인
+            setTimeout(async () => {
+              const { data: { session: retrySession } } = await supabase.auth.getSession()
+              if (retrySession?.user) {
+                console.log('✅ getSession으로 세션 확인 성공:', retrySession.user.email)
+                setUser({ id: retrySession.user.id, email: retrySession.user.email || '' })
+                setLoading(false)
+                setIsHandlingCallback(false)
+              } else {
+                console.warn('⚠️ 세션 확인 실패')
+                setLoading(false)
+                setIsHandlingCallback(false)
+              }
+            }, 2000)
           }
-        } catch (err) {
+        }).catch((err) => {
           console.error('❌ setSession 오류:', err)
-          console.error('❌ 오류 상세:', err.message || err)
-        }
+          // 오류 시 getSession으로 재확인
+          setTimeout(async () => {
+            const { data: { session: retrySession } } = await supabase.auth.getSession()
+            if (retrySession?.user) {
+              console.log('✅ getSession으로 세션 확인 성공:', retrySession.user.email)
+              setUser({ id: retrySession.user.id, email: retrySession.user.email || '' })
+              setLoading(false)
+              setIsHandlingCallback(false)
+            } else {
+              console.warn('⚠️ 세션 확인 실패')
+              setLoading(false)
+              setIsHandlingCallback(false)
+            }
+          }, 2000)
+        })
         
-        // setSession 실패 시 getSession으로 재확인
-        console.log('🔄 getSession으로 세션 재확인...')
-        try {
-          const { data: { session: retrySession }, error: getSessionError } = await supabase.auth.getSession()
-          
-          console.log('🔄 getSession 응답:', { 
-            hasSession: !!retrySession, 
-            hasUser: !!retrySession?.user,
-            userEmail: retrySession?.user?.email,
-            error: getSessionError?.message 
-          })
-          
-          if (retrySession?.user) {
-            console.log('✅ getSession으로 세션 확인 성공:', retrySession.user.email)
-            window.history.replaceState(null, '', window.location.pathname)
-            setUser({ id: retrySession.user.id, email: retrySession.user.email || '' })
-            setLoading(false)
-            setIsHandlingCallback(false)
-            return
-          } else {
-            console.warn('⚠️ 세션 확인 실패, 로그인 화면 표시')
-            console.warn('⚠️ getSessionError:', getSessionError)
+        // setSession 호출 후 onAuthStateChange가 처리할 때까지 대기
+        // 최대 10초 대기 후 타임아웃
+        setTimeout(() => {
+          if (isHandlingCallback) {
+            console.warn('⚠️ OAuth 콜백 처리 타임아웃 (10초), getSession으로 재확인...')
+            supabase.auth.getSession().then(({ data: { session } }) => {
+              if (session?.user) {
+                console.log('✅ 타임아웃 후 getSession 성공:', session.user.email)
+                setUser({ id: session.user.id, email: session.user.email || '' })
+              }
+              setLoading(false)
+              setIsHandlingCallback(false)
+            })
           }
-        } catch (err) {
-          console.error('❌ getSession 오류:', err)
-        }
+        }, 10000)
         
-        // 모든 시도 실패 시 URL 해시 정리하고 로그인 화면 표시
-        window.history.replaceState(null, '', window.location.pathname)
-        setLoading(false)
-        setIsHandlingCallback(false)
         return
       }
       
@@ -198,19 +200,15 @@ function App() {
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       console.log('Auth state changed:', _event, session ? 'has session' : 'no session')
       
-      // OAuth 콜백 처리 중이면 잠시 대기 후 처리
-      if (isHandlingCallback) {
-        console.log('⏭️ OAuth 콜백 처리 중, 잠시 대기 후 처리...')
-        // 콜백 처리가 완료될 때까지 잠시 대기
-        setTimeout(async () => {
-          if (session && _event === 'SIGNED_IN') {
-            console.log('✅ SIGNED_IN 이벤트 (콜백 후), 사용자 정보 로드 중...')
-            await loadUser()
-          }
-        }, 1000)
+      // OAuth 콜백 처리 중인 경우
+      if (isHandlingCallback && session && _event === 'SIGNED_IN') {
+        console.log('✅ SIGNED_IN 이벤트 (OAuth 콜백 처리 중), 사용자 정보 로드 중...')
+        setIsHandlingCallback(false)
+        await loadUser()
         return
       }
       
+      // 일반적인 인증 상태 변경
       if (session && _event === 'SIGNED_IN') {
         console.log('✅ SIGNED_IN 이벤트, 사용자 정보 로드 중...')
         await loadUser()
@@ -218,10 +216,14 @@ function App() {
         console.log('👋 SIGNED_OUT 이벤트')
         setUser(null)
         setLoading(false)
+        setIsHandlingCallback(false)
       } else if (!session) {
-        // 세션이 없는 경우
-        setUser(null)
-        setLoading(false)
+        // 세션이 없는 경우 (초기 로딩 또는 로그아웃 후)
+        // OAuth 콜백 처리 중이 아닐 때만 로딩 상태 변경
+        if (!isHandlingCallback) {
+          setUser(null)
+          setLoading(false)
+        }
       }
     })
 
