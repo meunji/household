@@ -23,14 +23,13 @@ const apiRequest = async (url, options = {}) => {
     headers['Authorization'] = `Bearer ${token}`
   }
   
-  // 디버깅을 위한 로그 (개발 환경에서만)
-  if (import.meta.env.DEV) {
-    console.log('API Request:', {
-      url,
-      method: options.method || 'GET',
-      headers: { ...headers, Authorization: token ? 'Bearer ***' : 'None' },
-    })
-  }
+  // 디버깅을 위한 로그 (항상 표시)
+  console.log('API Request:', {
+    url,
+    method: options.method || 'GET',
+    headers: { ...headers, Authorization: token ? 'Bearer ***' : 'None' },
+    apiBaseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  })
   
   try {
     const response = await fetch(url, {

@@ -6,6 +6,10 @@
 // API 기본 URL (환경 변수 또는 기본값)
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+// 디버깅: 실제 사용되는 API URL 확인
+console.log('🔍 API Base URL:', API_BASE_URL)
+console.log('🔍 VITE_API_URL env:', import.meta.env.VITE_API_URL)
+
 export const API_ENDPOINTS = {
   // 자산 관련
   ASSETS: {
