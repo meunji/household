@@ -161,52 +161,38 @@ export default function Login({ onLoginSuccess }) {
         )}
       
         <div style={{ flex: 1 }} /> {/* 공간 확보 */}
-        
-        {/* 하단 안내 텍스트 */}
-        <div style={{
-          marginBottom: '16px',
-          textAlign: 'center',
-          color: '#5D4037',
-          fontSize: '14px',
-          lineHeight: '1.6',
-          backgroundColor: 'rgba(255, 255, 255, 0.8)',
-          padding: '12px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-        }}>
-          <div style={{ marginBottom: '4px', fontWeight: '600' }}>🔒 안전하게 보호되는 데이터</div>
-          <div>Google 계정으로 간편하게 시작하세요</div>
-        </div>
-        
-        {/* 구글 로그인 버튼 - 하단 고정 */}
-        <button
-          onClick={handleGoogleLogin}
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '16px 24px',
-            margin: '0',
-            marginBottom: '0',
-            background: loading
-              ? 'linear-gradient(135deg, #E0E0E0 0%, #BDBDBD 100%)'
-              : 'linear-gradient(135deg, #4285f4 0%, #357ae8 100%)',
-            color: '#FFFFFF',
-            border: 'none',
-            borderRadius: '16px',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontSize: '16px',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-            transition: 'all 0.3s ease',
-            boxShadow: loading
-              ? 'none'
-              : '0 4px 12px rgba(66, 133, 244, 0.4)',
-            position: 'relative',
-            zIndex: 2,
-          }}
+      </div>
+      
+      {/* 구글 로그인 버튼 - 배경 이미지 하단 고정 */}
+      <button
+        onClick={handleGoogleLogin}
+        disabled={loading}
+        style={{
+          width: 'calc(100% - 80px)',
+          padding: '16px 24px',
+          position: 'absolute',
+          bottom: '16px',
+          left: '40px',
+          right: '40px',
+          background: loading
+            ? 'linear-gradient(135deg, #E0E0E0 0%, #BDBDBD 100%)'
+            : 'linear-gradient(135deg, #4285f4 0%, #357ae8 100%)',
+          color: '#FFFFFF',
+          border: 'none',
+          borderRadius: '16px',
+          cursor: loading ? 'not-allowed' : 'pointer',
+          fontSize: '16px',
+          fontWeight: '600',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '12px',
+          transition: 'all 0.3s ease',
+          boxShadow: loading
+            ? 'none'
+            : '0 4px 12px rgba(66, 133, 244, 0.4)',
+          zIndex: 3,
+        }}
         onMouseEnter={(e) => {
           if (!loading) {
             e.currentTarget.style.transform = 'translateY(-2px)'
@@ -252,7 +238,6 @@ export default function Login({ onLoginSuccess }) {
           </>
         )}
       </button>
-      </div>
     </div>
   )
 }
