@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from app.database import get_db
@@ -12,6 +12,7 @@ from app.schemas.family import (
     FamilyGroupDetailResponse,
     FamilyMemberWithEmailResponse,
 )
+from jose import jwt
 
 router = APIRouter(prefix="/api/family", tags=["family"])
 
@@ -43,8 +44,36 @@ async def create_family_group(
         )
 
 
+def get_email_from_token(request: Request) -> dict[str, Optional[str]]:
+    """요청 헤더의 JWT 토큰에서 user_id별 이메일 추출"""
+    email_map = {}
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header.replace("Bearer ", "")
+            # JWT 토큰에서 payload 추출
+            payload = jwt.decode(
+                token,
+                key="",
+                options={
+                    "verify_signature": False,
+                    "verify_aud": False,
+                    "verify_exp": False,
+                }
+            )
+            # 현재 사용자의 이메일 추출
+            current_user_id = payload.get("sub")
+            current_email = payload.get("email")
+            if current_user_id and current_email:
+                email_map[current_user_id] = current_email
+    except Exception:
+        pass
+    return email_map
+
+
 @router.get("/groups/my", response_model=FamilyGroupDetailResponse)
 async def get_my_family_group(
+    request: Request,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -67,13 +96,23 @@ async def get_my_family_group(
                 detail="가족 그룹을 찾을 수 없습니다.",
             )
         
-        # user_id를 이메일로 변환
-        admin_email = await FamilyService.get_user_email(family_group.admin_user_id)
+        # JWT 토큰에서 현재 사용자의 이메일 추출
+        email_map = get_email_from_token(request)
+        admin_email = email_map.get(family_group.admin_user_id)
+        
+        # JWT에서 찾지 못하면 Supabase Admin API 사용
+        if not admin_email:
+            admin_email = await FamilyService.get_user_email(family_group.admin_user_id)
         
         # 구성원들의 user_id를 이메일로 변환
         members_with_email = []
         for member in family_group.members:
-            member_email = await FamilyService.get_user_email(member.user_id)
+            # 먼저 JWT에서 확인 (현재 사용자)
+            member_email = email_map.get(member.user_id)
+            # JWT에서 찾지 못하면 Supabase Admin API 사용
+            if not member_email:
+                member_email = await FamilyService.get_user_email(member.user_id)
+            
             members_with_email.append(
                 FamilyMemberWithEmailResponse(
                     id=member.id,

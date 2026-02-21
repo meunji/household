@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { calculationService } from '../api/services'
-import { getAuthToken } from '../auth/supabase'
 
 /**
  * 요약 화면 컴포넌트
@@ -16,31 +15,47 @@ export default function Summary() {
 
   useEffect(() => {
     // 컴포넌트 마운트 시 또는 경로 변경 시 데이터 로드
-    // 토큰이 준비될 때까지 기다린 후 로드
-    const initializeData = async () => {
-      // 토큰이 준비될 때까지 최대 2초 대기
-      let attempts = 0
-      const maxAttempts = 10
-      
-      while (attempts < maxAttempts) {
-        const token = await getAuthToken()
-        if (token) {
-          await loadData()
-          return
-        }
-        // 200ms 대기 후 재시도
-        await new Promise(resolve => setTimeout(resolve, 200))
-        attempts++
+    // 재시도 카운터 리셋
+    sessionStorage.removeItem('summary_retry_count')
+    
+    // 약간의 지연을 두어 다른 컴포넌트에서 토큰이 준비될 시간을 줌
+    let mounted = true
+    
+    const timer = setTimeout(async () => {
+      if (mounted) {
+        await loadData()
       }
-      
-      // 토큰을 찾지 못해도 데이터 로드 시도 (에러 처리됨)
-      await loadData()
+    }, 500)  // 지연 시간 증가 (500ms)
+    
+    return () => {
+      mounted = false
+      clearTimeout(timer)
+    }
+  }, [location.pathname])
+  
+  // 포커스 시 데이터 새로고침 (다른 화면에서 돌아올 때)
+  useEffect(() => {
+    let mounted = true
+    
+    const handleFocus = () => {
+      if (mounted) {
+        loadData()
+      }
     }
     
-    initializeData()
-  }, [location.pathname])
+    window.addEventListener('focus', handleFocus)
+    return () => {
+      mounted = false
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [])
 
   const loadData = async () => {
+    // 이미 로딩 중이면 중복 호출 방지
+    if (loading) {
+      return
+    }
+    
     try {
       setLoading(true)
       setError(null)
@@ -51,18 +66,33 @@ export default function Summary() {
         calculationService.getMonthlySummary(),
       ])
       
-      setSummary(summaryData)
-      setMonthly(monthlyData)
+      // 데이터가 정상적으로 반환된 경우에만 상태 업데이트
+      if (summaryData && monthlyData) {
+        setSummary(summaryData)
+        setMonthly(monthlyData)
+      } else {
+        console.warn('⚠️ 데이터가 비어있습니다')
+        // 데이터가 없으면 기본값 설정하지 않음 (로딩 상태 유지)
+      }
     } catch (err) {
       console.error('API 호출 오류:', err)
       const errorMessage = err.message || '데이터를 불러오는 중 오류가 발생했습니다.'
       
       // 타임아웃인 경우와 실제 오류인 경우 구분
-      if (errorMessage.includes('타임아웃')) {
-        console.warn('⚠️ 요약 데이터 로딩 타임아웃 - 데이터가 없거나 서버 응답이 느립니다')
-        // 타임아웃 시 기본값 설정 (에러 표시 안함)
-        setSummary({ total_assets: 0, total_liabilities: 0, net_worth: 0 })
-        setMonthly({ year: new Date().getFullYear(), month: new Date().getMonth() + 1, total_income: 0, total_expense: 0 })
+      if (errorMessage.includes('타임아웃') || errorMessage.includes('timeout')) {
+        console.warn('⚠️ 요약 데이터 로딩 타임아웃 - 잠시 후 자동으로 다시 시도합니다')
+        // 타임아웃 시 2초 후 재시도 (최대 3회)
+        const retryCount = parseInt(sessionStorage.getItem('summary_retry_count') || '0')
+        if (retryCount < 3) {
+          sessionStorage.setItem('summary_retry_count', String(retryCount + 1))
+          setTimeout(() => {
+            console.log(`🔄 타임아웃 후 재시도... (${retryCount + 1}/3)`)
+            loadData()
+          }, 2000)
+        } else {
+          sessionStorage.removeItem('summary_retry_count')
+          setError('데이터를 불러오는 데 시간이 걸리고 있습니다. 새로고침 버튼을 눌러주세요.')
+        }
       } else {
         setError(errorMessage)
       }

@@ -254,6 +254,7 @@ class FamilyService:
     async def get_user_email(user_id: str) -> Optional[str]:
         """user_id로 이메일 조회 (Supabase Admin API 사용)"""
         if not settings.supabase_service_key:
+            logger.warning("SUPABASE_SERVICE_KEY가 설정되지 않아 이메일을 조회할 수 없습니다.")
             return None
         
         try:
@@ -262,7 +263,34 @@ class FamilyService:
                 settings.supabase_service_key
             )
             
-            # auth.users 테이블에서 user_id로 사용자 조회
+            # getUserById를 사용하여 특정 사용자 조회 (더 효율적)
+            try:
+                user_response = supabase_admin.auth.admin.get_user_by_id(user_id)
+                
+                # 응답 처리
+                if user_response:
+                    user = None
+                    if isinstance(user_response, dict):
+                        user = user_response.get('user') or user_response
+                    elif hasattr(user_response, 'user'):
+                        user = user_response.user
+                    else:
+                        user = user_response
+                    
+                    if user:
+                        email = None
+                        if isinstance(user, dict):
+                            email = user.get('email')
+                        else:
+                            email = getattr(user, 'email', None)
+                        
+                        if email:
+                            logger.info(f"이메일 조회 성공: {user_id} -> {email}")
+                            return email
+            except Exception as getUserError:
+                logger.warning(f"getUserById 실패, list_users로 대체: {str(getUserError)}")
+            
+            # getUserById가 실패하면 list_users 사용
             response = supabase_admin.auth.admin.list_users()
             
             if response:
@@ -277,6 +305,8 @@ class FamilyService:
                 elif isinstance(response, list):
                     users_list = response
                 
+                logger.info(f"list_users로 {len(users_list)}명의 사용자 조회 중...")
+                
                 for user in users_list:
                     # user가 dict인 경우
                     if isinstance(user, dict):
@@ -288,8 +318,11 @@ class FamilyService:
                         email = getattr(user, 'email', '') or ''
                     
                     if uid == user_id:
+                        logger.info(f"이메일 조회 성공: {user_id} -> {email}")
                         return email
+                
+                logger.warning(f"사용자를 찾을 수 없음: {user_id}")
         except Exception as e:
-            logger.warning(f"이메일 조회 실패 (user_id: {user_id}): {str(e)}")
+            logger.error(f"이메일 조회 실패 (user_id: {user_id}): {str(e)}", exc_info=True)
         
         return None

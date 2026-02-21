@@ -17,6 +17,16 @@ export default function FamilyAdmin() {
   useEffect(() => {
     loadFamilyGroup()
   }, [])
+  
+  // 포커스 시 데이터 새로고침
+  useEffect(() => {
+    const handleFocus = () => {
+      loadFamilyGroup()
+    }
+    
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [])
 
   const loadFamilyGroup = async () => {
     try {
@@ -281,7 +291,13 @@ export default function FamilyAdmin() {
                     >
                       <div>
                         <div style={{ fontWeight: '600', color: '#5D4037', marginBottom: '4px' }}>
-                          {member.email || member.user_id}
+                          {member.email ? (
+                            <span>{member.email}</span>
+                          ) : (
+                            <span style={{ fontSize: '12px', color: '#9E9E9E' }}>
+                              {member.user_id.substring(0, 8)}... (이메일 조회 중)
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: '14px', color: '#757575' }}>
                           {member.role === 'ADMIN' ? '관리자' : '구성원'}
