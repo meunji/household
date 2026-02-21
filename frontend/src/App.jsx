@@ -97,26 +97,28 @@ function App() {
             // URL 해시 정리 (보안상) - 세션 복원 후에 정리
             window.history.replaceState(null, '', window.location.pathname)
             
-            // 사용자 정보 로드
-            const currentUser = await getCurrentUser()
-            console.log('✅ 사용자 정보:', currentUser)
-            
-            if (currentUser) {
-              setUser(currentUser)
+            // 세션에서 직접 사용자 정보 가져오기 (더 빠름)
+            if (session.user) {
+              console.log('✅ 세션에서 사용자 정보 가져옴:', session.user.email)
+              setUser({ id: session.user.id, email: session.user.email || '' })
               setLoading(false)
+              setIsHandlingCallback(false)
             } else {
-              console.warn('⚠️ 사용자 정보가 null입니다, 세션에서 직접 가져오기 시도')
-              // 세션에서 직접 사용자 정보 가져오기
-              if (session.user) {
-                setUser({ id: session.user.id, email: session.user.email || '' })
-                setLoading(false)
-              } else {
-                setLoading(false)
+              // 세션에 사용자 정보가 없으면 getCurrentUser 시도
+              console.log('⚠️ 세션에 사용자 정보 없음, getCurrentUser 시도...')
+              const currentUser = await getCurrentUser()
+              console.log('✅ 사용자 정보:', currentUser)
+              
+              if (currentUser) {
+                setUser(currentUser)
               }
+              setLoading(false)
+              setIsHandlingCallback(false)
             }
           } else if (error) {
             console.error('❌ 세션 복원 실패:', error)
             setLoading(false)
+            setIsHandlingCallback(false)
           }
         } catch (err) {
           console.error('❌ OAuth 콜백 처리 중 오류:', err)
@@ -136,13 +138,20 @@ function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      // OAuth 콜백 처리 중이면 무시
+      console.log('Auth state changed:', _event, session ? 'has session' : 'no session')
+      
+      // OAuth 콜백 처리 중이면 잠시 대기 후 처리
       if (isHandlingCallback) {
-        console.log('⏭️ OAuth 콜백 처리 중이므로 onAuthStateChange 무시')
+        console.log('⏭️ OAuth 콜백 처리 중, 잠시 대기 후 처리...')
+        // 콜백 처리가 완료될 때까지 잠시 대기
+        setTimeout(async () => {
+          if (session && _event === 'SIGNED_IN') {
+            console.log('✅ SIGNED_IN 이벤트 (콜백 후), 사용자 정보 로드 중...')
+            await loadUser()
+          }
+        }, 1000)
         return
       }
-      
-      console.log('Auth state changed:', _event, session ? 'has session' : 'no session')
       
       if (session && _event === 'SIGNED_IN') {
         console.log('✅ SIGNED_IN 이벤트, 사용자 정보 로드 중...')
@@ -163,8 +172,16 @@ function App() {
 
   const checkUser = async () => {
     try {
+      // OAuth 콜백 처리 중이면 타임아웃 증가
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      const isOAuthCallback = !!hashParams.get('access_token')
+      
+      // OAuth 콜백인 경우 더 긴 타임아웃 (15초)
+      // 일반적인 경우 짧은 타임아웃 (5초)
+      const timeout = isOAuthCallback ? 15000 : 5000
+      
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('인증 확인 시간 초과')), 5000)
+        setTimeout(() => reject(new Error('인증 확인 시간 초과')), timeout)
       )
       
       const userPromise = getCurrentUser()
@@ -172,6 +189,21 @@ function App() {
       setUser(currentUser)
     } catch (error) {
       console.error('Error checking user:', error)
+      // 타임아웃 오류인 경우 세션에서 직접 확인 시도
+      if (error.message === '인증 확인 시간 초과') {
+        console.log('⏱️ 타임아웃 발생, 세션에서 직접 확인 시도...')
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.user) {
+            console.log('✅ 세션에서 사용자 정보 확인됨')
+            setUser({ id: session.user.id, email: session.user.email || '' })
+            setLoading(false)
+            return
+          }
+        } catch (e) {
+          console.error('세션 확인 실패:', e)
+        }
+      }
       setUser(null)
     } finally {
       setLoading(false)
