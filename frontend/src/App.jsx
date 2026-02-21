@@ -86,10 +86,18 @@ function App() {
         console.log('✅ 프로덕션 환경에서 토큰 처리')
         
         try {
+          console.log('🔄 세션 복원 시작...')
           // 세션 복원
           const { data: { session }, error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: hashParams.get('refresh_token') || '',
+          })
+          
+          console.log('🔄 세션 복원 응답:', { 
+            hasSession: !!session, 
+            hasUser: !!session?.user,
+            userEmail: session?.user?.email,
+            error: error?.message 
           })
           
           if (session) {
@@ -103,27 +111,57 @@ function App() {
               setUser({ id: session.user.id, email: session.user.email || '' })
               setLoading(false)
               setIsHandlingCallback(false)
+              console.log('✅ 로딩 완료, 사용자 설정됨')
             } else {
-              // 세션에 사용자 정보가 없으면 getCurrentUser 시도
-              console.log('⚠️ 세션에 사용자 정보 없음, getCurrentUser 시도...')
-              const currentUser = await getCurrentUser()
-              console.log('✅ 사용자 정보:', currentUser)
-              
-              if (currentUser) {
-                setUser(currentUser)
+              console.warn('⚠️ 세션에 사용자 정보 없음, getCurrentUser 시도...')
+              try {
+                const currentUser = await getCurrentUser()
+                console.log('✅ 사용자 정보:', currentUser)
+                
+                if (currentUser) {
+                  setUser(currentUser)
+                } else {
+                  // 폴백: 세션에서 직접 가져오기
+                  console.log('⚠️ getCurrentUser 실패, 세션 재확인')
+                  const { data: { session: currentSession } } = await supabase.auth.getSession()
+                  if (currentSession?.user) {
+                    console.log('✅ 재확인된 세션에서 사용자 정보 가져옴')
+                    setUser({ id: currentSession.user.id, email: currentSession.user.email || '' })
+                  }
+                }
+              } catch (e) {
+                console.error('❌ getCurrentUser 오류:', e)
+                // 폴백: 세션에서 직접 가져오기
+                const { data: { session: currentSession } } = await supabase.auth.getSession()
+                if (currentSession?.user) {
+                  console.log('✅ 폴백: 세션에서 사용자 정보 가져옴')
+                  setUser({ id: currentSession.user.id, email: currentSession.user.email || '' })
+                }
               }
               setLoading(false)
               setIsHandlingCallback(false)
+              console.log('✅ 로딩 완료')
             }
           } else if (error) {
             console.error('❌ 세션 복원 실패:', error)
             setLoading(false)
             setIsHandlingCallback(false)
+          } else {
+            console.warn('⚠️ 세션이 null이지만 오류도 없음, 재시도...')
+            // 재시도: 잠시 후 세션 확인
+            setTimeout(async () => {
+              const { data: { session: retrySession } } = await supabase.auth.getSession()
+              if (retrySession?.user) {
+                console.log('✅ 재시도 성공, 사용자 정보 가져옴')
+                setUser({ id: retrySession.user.id, email: retrySession.user.email || '' })
+              }
+              setLoading(false)
+              setIsHandlingCallback(false)
+            }, 1000)
           }
         } catch (err) {
           console.error('❌ OAuth 콜백 처리 중 오류:', err)
           setLoading(false)
-        } finally {
           setIsHandlingCallback(false)
         }
         return
