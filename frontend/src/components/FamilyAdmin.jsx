@@ -17,16 +17,6 @@ export default function FamilyAdmin() {
   useEffect(() => {
     loadFamilyGroup()
   }, [])
-  
-  // 포커스 시 데이터 새로고침
-  useEffect(() => {
-    const handleFocus = () => {
-      loadFamilyGroup()
-    }
-    
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
-  }, [])
 
   const loadFamilyGroup = async () => {
     try {
@@ -259,14 +249,37 @@ export default function FamilyAdmin() {
               backgroundColor: '#F5F5F5',
               borderRadius: '12px',
               marginBottom: '24px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
             }}
           >
-            <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#5D4037', marginBottom: '8px' }}>
-              {familyGroup.name}
-            </h2>
-            <p style={{ color: '#757575', fontSize: '14px' }}>
-              관리자: {familyGroup.admin_email || familyGroup.admin_user_id}
-            </p>
+            <div>
+              <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#5D4037', marginBottom: '8px' }}>
+                {familyGroup.name}
+              </h2>
+              <p style={{ color: '#757575', fontSize: '14px' }}>
+                관리자: {familyGroup.admin_email || familyGroup.admin_user_id}
+              </p>
+            </div>
+            <button
+              onClick={loadFamilyGroup}
+              disabled={loading || submitting}
+              style={{
+                padding: '10px 20px',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#FFFFFF',
+                backgroundColor: '#66BB6A',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: loading || submitting ? 'not-allowed' : 'pointer',
+                opacity: loading || submitting ? 0.6 : 1,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {loading ? '조회 중...' : '🔄 새로고침'}
+            </button>
           </div>
 
           <div style={{ marginBottom: '32px' }}>
