@@ -93,41 +93,26 @@ function App() {
         // 프로덕션 환경에서 토큰 처리
         console.log('✅ 프로덕션 환경에서 토큰 처리')
         
-        // URL 해시 정리 (보안상) - 먼저 정리
-        window.history.replaceState(null, '', window.location.pathname)
+        const refreshToken = hashParams.get('refresh_token') || ''
+        console.log('🔑 토큰 정보:', { 
+          hasAccessToken: !!accessToken, 
+          hasRefreshToken: !!refreshToken,
+          tokenLength: accessToken?.length 
+        })
         
-        // 간단한 방법: getSession으로 먼저 확인 (Supabase가 자동으로 처리했을 수 있음)
-        console.log('🔄 getSession으로 세션 확인...')
-        const { data: { session: existingSession } } = await supabase.auth.getSession()
-        
-        if (existingSession?.user) {
-          console.log('✅ 기존 세션 발견:', existingSession.user.email)
-          setUser({ id: existingSession.user.id, email: existingSession.user.email || '' })
-          setLoading(false)
-          setIsHandlingCallback(false)
-          return
-        }
-        
-        // 세션이 없으면 setSession 시도 (타임아웃 포함)
+        // setSession으로 세션 복원 시도 (URL 해시 정리 전에 먼저 처리)
         console.log('🔄 setSession으로 세션 복원 시도...')
-        const timeoutId = setTimeout(async () => {
-          console.warn('⚠️ setSession 타임아웃 (3초), getSession으로 재확인...')
-          const { data: { session: timeoutSession } } = await supabase.auth.getSession()
-          if (timeoutSession?.user) {
-            console.log('✅ 타임아웃 후 재확인 성공')
-            setUser({ id: timeoutSession.user.id, email: timeoutSession.user.email || '' })
-          }
-          setLoading(false)
-          setIsHandlingCallback(false)
-        }, 3000)
         
         try {
-          const { data: { session }, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: hashParams.get('refresh_token') || '',
-          })
-          
-          clearTimeout(timeoutId)
+          const { data: { session }, error } = await Promise.race([
+            supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            }),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('타임아웃')), 5000)
+            )
+          ])
           
           console.log('🔄 setSession 응답:', { 
             hasSession: !!session, 
@@ -138,31 +123,53 @@ function App() {
           
           if (session?.user) {
             console.log('✅ 세션 복원 성공:', session.user.email)
+            // URL 해시 정리 (보안상) - 세션 설정 후에 정리
+            window.history.replaceState(null, '', window.location.pathname)
             setUser({ id: session.user.id, email: session.user.email || '' })
+            setLoading(false)
+            setIsHandlingCallback(false)
+            console.log('✅ 로딩 완료, 사용자 설정됨')
+            return
           } else if (error) {
             console.error('❌ 세션 복원 실패:', error)
-            // 재시도: getSession
-            const { data: { session: retrySession } } = await supabase.auth.getSession()
-            if (retrySession?.user) {
-              console.log('✅ 재시도 성공')
-              setUser({ id: retrySession.user.id, email: retrySession.user.email || '' })
-            }
+            console.error('❌ 에러 상세:', error)
           }
-          
-          setLoading(false)
-          setIsHandlingCallback(false)
         } catch (err) {
           console.error('❌ setSession 오류:', err)
-          clearTimeout(timeoutId)
-          // 폴백: getSession
-          const { data: { session: fallbackSession } } = await supabase.auth.getSession()
-          if (fallbackSession?.user) {
-            console.log('✅ 폴백 성공')
-            setUser({ id: fallbackSession.user.id, email: fallbackSession.user.email || '' })
-          }
-          setLoading(false)
-          setIsHandlingCallback(false)
+          console.error('❌ 오류 상세:', err.message || err)
         }
+        
+        // setSession 실패 시 getSession으로 재확인
+        console.log('🔄 getSession으로 세션 재확인...')
+        try {
+          const { data: { session: retrySession }, error: getSessionError } = await supabase.auth.getSession()
+          
+          console.log('🔄 getSession 응답:', { 
+            hasSession: !!retrySession, 
+            hasUser: !!retrySession?.user,
+            userEmail: retrySession?.user?.email,
+            error: getSessionError?.message 
+          })
+          
+          if (retrySession?.user) {
+            console.log('✅ getSession으로 세션 확인 성공:', retrySession.user.email)
+            window.history.replaceState(null, '', window.location.pathname)
+            setUser({ id: retrySession.user.id, email: retrySession.user.email || '' })
+            setLoading(false)
+            setIsHandlingCallback(false)
+            return
+          } else {
+            console.warn('⚠️ 세션 확인 실패, 로그인 화면 표시')
+            console.warn('⚠️ getSessionError:', getSessionError)
+          }
+        } catch (err) {
+          console.error('❌ getSession 오류:', err)
+        }
+        
+        // 모든 시도 실패 시 URL 해시 정리하고 로그인 화면 표시
+        window.history.replaceState(null, '', window.location.pathname)
+        setLoading(false)
+        setIsHandlingCallback(false)
         return
       }
       
