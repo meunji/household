@@ -64,21 +64,22 @@ function App() {
   const [isHandlingCallback, setIsHandlingCallback] = useState(false)
   const callbackHandledRef = useRef(false)
 
-  // handleAuthCallback을 useCallback으로 메모이제이션하여 중복 호출 방지
-  const handleAuthCallback = useCallback(async () => {
-    const hashParams = new URLSearchParams(window.location.hash.substring(1))
-    const accessToken = hashParams.get('access_token')
-    
-    if (accessToken) {
-      // 중복 처리 방지 (useRef 사용)
-      if (callbackHandledRef.current) {
-        console.log('⏭️ OAuth 콜백 이미 처리됨, 무시')
-        return
-      }
+  useEffect(() => {
+    // OAuth 리디렉션 후 URL 해시에서 토큰 처리
+    const handleAuthCallback = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      const accessToken = hashParams.get('access_token')
       
-      callbackHandledRef.current = true
-      setIsHandlingCallback(true)
-      console.log('🔍 OAuth 콜백 감지, 토큰 처리 중...')
+      if (accessToken) {
+        // 중복 처리 방지 (useRef 사용)
+        if (callbackHandledRef.current) {
+          console.log('⏭️ OAuth 콜백 이미 처리됨, 무시')
+          return
+        }
+        
+        callbackHandledRef.current = true
+        setIsHandlingCallback(true)
+        console.log('🔍 OAuth 콜백 감지, 토큰 처리 중...')
         
         // localhost로 리디렉션된 경우 프로덕션 URL로 자동 리디렉션
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -196,10 +197,27 @@ function App() {
           console.log('ℹ️ 세션 확인 중 오류 (무시):', error)
         })
       }
+      
+      // OAuth 콜백이 아닌 경우: 로딩을 즉시 종료하고 로그인 화면 표시
+      // callbackHandledRef를 사용하여 OAuth 콜백 처리 중이 아닐 때만 실행
+      if (!callbackHandledRef.current) {
+        console.log('ℹ️ 초기 로딩 완료, 로그인 화면 표시')
+        setLoading(false)
+        
+        // 백그라운드에서 빠른 세션 확인 (비동기, 로딩 상태에 영향 없음)
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) {
+            console.log('✅ 기존 세션 발견:', session.user.email)
+            setUser({ id: session.user.id, email: session.user.email || '' })
+          } else {
+            console.log('ℹ️ 세션 없음, 로그인 필요')
+          }
+        }).catch((error) => {
+          console.log('ℹ️ 세션 확인 중 오류 (무시):', error)
+        })
+      }
     }
-  }, [])
 
-  useEffect(() => {
     handleAuthCallback()
 
     const {
@@ -235,7 +253,7 @@ function App() {
     })
 
     return () => subscription.unsubscribe()
-  }, [isHandlingCallback, handleAuthCallback])
+  }, [isHandlingCallback])
 
   const checkUser = async () => {
     try {
