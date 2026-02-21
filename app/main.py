@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from app.routers import assets, transactions, calculations, categories
+from app.routers import assets, transactions, calculations, categories, family
 import traceback
 import logging
 
@@ -61,6 +61,7 @@ app.include_router(assets.router)
 app.include_router(transactions.router)
 app.include_router(calculations.router)
 app.include_router(categories.router)
+app.include_router(family.router)
 
 
 @app.get("/")

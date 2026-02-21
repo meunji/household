@@ -5,6 +5,7 @@ import Login from './components/Login'
 import AssetForm from './components/AssetForm'
 import TransactionForm from './components/TransactionForm'
 import Summary from './components/Summary'
+import FamilyAdmin from './components/FamilyAdmin'
 
 /**
  * 네비게이션 링크 컴포넌트
@@ -756,6 +757,7 @@ function App() {
             <NavLink to="/summary" icon="📊">요약</NavLink>
             <NavLink to="/assets" icon="💰">자산 관리</NavLink>
             <NavLink to="/transactions" icon="📝">거래 관리</NavLink>
+            <NavLink to="/admin" icon="👨‍👩‍👧‍👦">관리자</NavLink>
           </div>
         </div>
 
@@ -765,6 +767,7 @@ function App() {
           <Route path="/summary" element={<Summary key={user?.id} />} />
           <Route path="/assets" element={<AssetForm key={user?.id} />} />
           <Route path="/transactions" element={<TransactionForm key={user?.id} />} />
+          <Route path="/admin" element={<FamilyAdmin key={user?.id} />} />
         </Routes>
       </div>
     </Router>

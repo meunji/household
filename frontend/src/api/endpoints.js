@@ -40,4 +40,15 @@ export const API_ENDPOINTS = {
     LIST: `${API_BASE_URL}/api/categories`,
     ALL: `${API_BASE_URL}/api/categories/all`,
   },
+  
+  // 가족 그룹 관련
+  FAMILY: {
+    GROUPS: {
+      CREATE: `${API_BASE_URL}/api/family/groups`,
+      MY: `${API_BASE_URL}/api/family/groups/my`,
+      ADD_MEMBER: (familyGroupId) => `${API_BASE_URL}/api/family/groups/${familyGroupId}/members`,
+      REMOVE_MEMBER: (familyGroupId, memberUserId) => 
+        `${API_BASE_URL}/api/family/groups/${familyGroupId}/members/${memberUserId}`,
+    },
+  },
 }

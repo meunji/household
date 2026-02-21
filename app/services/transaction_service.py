@@ -8,6 +8,7 @@ from fastapi import HTTPException, status
 from app.models.transaction import Transaction, TransactionType
 from app.models.category import Category
 from app.schemas.transaction import TransactionCreate, TransactionUpdate
+from app.services import family_service
 
 
 class TransactionService:
@@ -19,13 +20,18 @@ class TransactionService:
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
     ) -> list[Transaction]:
-        """거래 목록 조회 (카테고리 정보 포함)"""
+        """거래 목록 조회 (카테고리 정보 포함, 가족 그룹 포함)"""
         from sqlalchemy.orm import joinedload
+        
+        # 가족 그룹의 모든 구성원 user_id 가져오기
+        family_user_ids = await family_service.FamilyService.get_family_member_user_ids(
+            db, user_id
+        )
         
         query = (
             select(Transaction)
             .options(joinedload(Transaction.category))
-            .where(Transaction.user_id == user_id)
+            .where(Transaction.user_id.in_(family_user_ids))
         )
 
         if transaction_type:
@@ -102,10 +108,24 @@ class TransactionService:
         transaction_data: TransactionUpdate,
         user_id: str,
     ) -> Transaction:
-        """거래 수정"""
-        transaction = await TransactionService.get_transaction_by_id(
-            db, transaction_id, user_id
+        """거래 수정 (본인이 생성한 거래만 수정 가능)"""
+        from sqlalchemy.orm import joinedload
+        
+        # 본인이 생성한 거래만 수정 가능
+        result = await db.execute(
+            select(Transaction)
+            .options(joinedload(Transaction.category))
+            .where(
+                Transaction.id == transaction_id,
+                Transaction.user_id == user_id  # 본인 것만 수정 가능
+            )
         )
+        transaction = result.unique().scalar_one_or_none()
+        if not transaction:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Transaction not found",
+            )
 
         if transaction_data.type is not None:
             transaction.type = transaction_data.type
@@ -156,7 +176,12 @@ class TransactionService:
     async def get_monthly_income(
         db: AsyncSession, user_id: str, year: int, month: int
     ) -> float:
-        """특정 월의 수입 합계"""
+        """특정 월의 수입 합계 (가족 그룹 포함)"""
+        # 가족 그룹의 모든 구성원 user_id 가져오기
+        family_user_ids = await family_service.FamilyService.get_family_member_user_ids(
+            db, user_id
+        )
+        
         start_date = date(year, month, 1)
         # 다음 달 1일
         if month == 12:
@@ -167,7 +192,7 @@ class TransactionService:
         result = await db.execute(
             select(func.sum(Transaction.amount)).where(
                 and_(
-                    Transaction.user_id == user_id,
+                    Transaction.user_id.in_(family_user_ids),
                     Transaction.type == TransactionType.INCOME,
                     Transaction.date >= start_date,
                     Transaction.date < end_date,
@@ -181,7 +206,12 @@ class TransactionService:
     async def get_monthly_expense(
         db: AsyncSession, user_id: str, year: int, month: int
     ) -> float:
-        """특정 월의 지출 합계"""
+        """특정 월의 지출 합계 (가족 그룹 포함)"""
+        # 가족 그룹의 모든 구성원 user_id 가져오기
+        family_user_ids = await family_service.FamilyService.get_family_member_user_ids(
+            db, user_id
+        )
+        
         start_date = date(year, month, 1)
         # 다음 달 1일
         if month == 12:
@@ -192,7 +222,7 @@ class TransactionService:
         result = await db.execute(
             select(func.sum(Transaction.amount)).where(
                 and_(
-                    Transaction.user_id == user_id,
+                    Transaction.user_id.in_(family_user_ids),
                     Transaction.type == TransactionType.EXPENSE,
                     Transaction.date >= start_date,
                     Transaction.date < end_date,
