@@ -105,9 +105,26 @@ function App() {
         // 먼저 getSession을 호출해보고, 실패하면 setSession 사용
         console.log('🔄 getSession으로 먼저 확인 (Supabase가 자동 처리했을 수 있음)...')
         
-        // URL 해시를 정리하기 전에 getSession 먼저 시도
-        console.log('🔄 getSession 호출 시작...')
-        const { data: { session: existingSession }, error: getSessionError } = await supabase.auth.getSession()
+        // URL 해시를 정리하기 전에 getSession 먼저 시도 (타임아웃 포함)
+        console.log('🔄 getSession 호출 시작 (타임아웃: 2초)...')
+        
+        let existingSession = null
+        let getSessionError = null
+        
+        try {
+          const getSessionPromise = supabase.auth.getSession()
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('getSession 타임아웃')), 2000)
+          )
+          
+          const result = await Promise.race([getSessionPromise, timeoutPromise])
+          existingSession = result.data?.session
+          getSessionError = result.error
+        } catch (err) {
+          console.warn('⚠️ getSession 타임아웃 또는 오류:', err.message)
+          getSessionError = err
+        }
+        
         console.log('🔄 getSession 응답:', { 
           hasSession: !!existingSession, 
           hasUser: !!existingSession?.user,
@@ -126,7 +143,7 @@ function App() {
           return
         }
         
-        console.log('🔄 getSession으로 세션 없음, setSession 시도...')
+        console.log('🔄 getSession으로 세션 없음 또는 타임아웃, setSession 시도...')
         console.log('🔄 getSessionError:', getSessionError)
         
         // URL 해시를 정리 (보안상) - setSession 전에 정리
