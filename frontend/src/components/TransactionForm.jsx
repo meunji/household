@@ -44,9 +44,9 @@ export default function TransactionForm() {
       setLoading(true)
       setError(null)
       
-      // 타임아웃 추가 (30초)
+      // 타임아웃 추가 (5초) - 짧게 설정하여 빠르게 실패 처리
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('데이터 로딩 타임아웃')), 30000)
+        setTimeout(() => reject(new Error('데이터 로딩 타임아웃 (5초)')), 5000)
       )
       
       const data = await Promise.race([
@@ -54,11 +54,19 @@ export default function TransactionForm() {
         timeoutPromise,
       ])
       
-      setTransactions(data)
+      setTransactions(data || [])
     } catch (err) {
       console.error('거래 로드 오류:', err)
-      setError(err.message || '거래를 불러오는 중 오류가 발생했습니다.')
-      setTransactions([]) // 오류 시 빈 배열로 설정
+      const errorMessage = err.message || '거래를 불러오는 중 오류가 발생했습니다.'
+      
+      // 타임아웃인 경우와 실제 오류인 경우 구분
+      if (errorMessage.includes('타임아웃')) {
+        console.warn('⚠️ 거래 로딩 타임아웃 - 데이터가 없거나 서버 응답이 느립니다')
+        setTransactions([]) // 타임아웃 시 빈 배열로 설정 (에러 표시 안함)
+      } else {
+        setError(errorMessage)
+        setTransactions([]) // 오류 시 빈 배열로 설정
+      }
     } finally {
       setLoading(false)
     }
@@ -70,9 +78,9 @@ export default function TransactionForm() {
     setSubmitting(true)
 
     try {
-      // 타임아웃 추가 (30초)
+      // 타임아웃 추가 (15초) - 등록은 조금 더 여유있게
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('등록 타임아웃')), 30000)
+        setTimeout(() => reject(new Error('등록 타임아웃 (15초)')), 15000)
       )
       
       try {
@@ -373,32 +381,32 @@ export default function TransactionForm() {
           
           <button
             type="submit"
-            disabled={submitting || loading}
+            disabled={submitting}
             style={{
               width: '100%',
               padding: '16px',
-              background: (submitting || loading)
+              background: submitting
                 ? 'linear-gradient(135deg, #E0E0E0 0%, #BDBDBD 100%)'
                 : 'linear-gradient(135deg, #FF8A80 0%, #FF6B6B 100%)',
               color: '#FFFFFF',
               border: 'none',
               borderRadius: '12px',
-              cursor: (submitting || loading) ? 'not-allowed' : 'pointer',
+              cursor: submitting ? 'not-allowed' : 'pointer',
               fontWeight: '600',
               fontSize: '16px',
               transition: 'all 0.3s ease',
-              boxShadow: (submitting || loading)
+              boxShadow: submitting
                 ? 'none'
                 : '0 4px 12px rgba(255, 138, 128, 0.3)',
             }}
             onMouseEnter={(e) => {
-              if (!submitting && !loading) {
+              if (!submitting) {
                 e.currentTarget.style.transform = 'translateY(-2px)'
                 e.currentTarget.style.boxShadow = '0 6px 16px rgba(255, 138, 128, 0.4)'
               }
             }}
             onMouseLeave={(e) => {
-              if (!submitting && !loading) {
+              if (!submitting) {
                 e.currentTarget.style.transform = 'translateY(0)'
                 e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 138, 128, 0.3)'
               }

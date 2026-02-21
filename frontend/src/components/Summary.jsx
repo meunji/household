@@ -20,9 +20,9 @@ export default function Summary() {
       setLoading(true)
       setError(null)
       
-      // 타임아웃 추가 (30초)
+      // 타임아웃 추가 (5초) - 짧게 설정하여 빠르게 실패 처리
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('데이터 로딩 타임아웃')), 30000)
+        setTimeout(() => reject(new Error('데이터 로딩 타임아웃 (5초)')), 5000)
       )
       
       const [summaryData, monthlyData] = await Promise.race([
@@ -37,7 +37,17 @@ export default function Summary() {
       setMonthly(monthlyData)
     } catch (err) {
       console.error('API 호출 오류:', err)
-      setError(err.message || '데이터를 불러오는 중 오류가 발생했습니다.')
+      const errorMessage = err.message || '데이터를 불러오는 중 오류가 발생했습니다.'
+      
+      // 타임아웃인 경우와 실제 오류인 경우 구분
+      if (errorMessage.includes('타임아웃')) {
+        console.warn('⚠️ 요약 데이터 로딩 타임아웃 - 데이터가 없거나 서버 응답이 느립니다')
+        // 타임아웃 시 기본값 설정 (에러 표시 안함)
+        setSummary({ total_assets: 0, total_liabilities: 0, net_worth: 0 })
+        setMonthly({ year: new Date().getFullYear(), month: new Date().getMonth() + 1, total_income: 0, total_expense: 0 })
+      } else {
+        setError(errorMessage)
+      }
     } finally {
       setLoading(false)
     }
