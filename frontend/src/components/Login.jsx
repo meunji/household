@@ -121,16 +121,18 @@ export default function Login({ onLoginSuccess }) {
         <div style={{
           textAlign: 'center',
           marginBottom: '32px',
-          marginTop: '20px',
+          marginTop: '10px',
         }}>
           <h2 style={{
-            fontSize: '36px',
-            fontWeight: '400',
-            fontFamily: "'Jua', 'Dongle', 'Noto Sans KR', sans-serif",
-            color: '#9C27B0',
+            fontSize: '32px',
+            fontWeight: '500',
+            fontFamily: "'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif",
+            background: 'linear-gradient(135deg, #CE93D8 0%, #BA68C8 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
             marginBottom: '8px',
             textShadow: '0 2px 4px rgba(255, 255, 255, 0.9)',
-            letterSpacing: '1px',
+            letterSpacing: '-0.5px',
           }}>잘살아보세</h2>
         </div>
       
@@ -171,7 +173,7 @@ export default function Login({ onLoginSuccess }) {
           width: 'calc(100% - 80px)',
           padding: '16px 24px',
           position: 'absolute',
-          bottom: '16px',
+          bottom: '32px',
           left: '40px',
           right: '40px',
           background: loading
