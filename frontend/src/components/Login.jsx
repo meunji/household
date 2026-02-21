@@ -73,7 +73,7 @@ export default function Login({ onLoginSuccess }) {
     <div style={{
       width: '100%',
       maxWidth: '420px',
-      padding: '40px',
+      padding: '40px 40px 20px 40px',
       backgroundColor: '#FFFFFF',
       borderRadius: '24px',
       boxShadow: '0 8px 32px rgba(93, 64, 55, 0.12)',
@@ -124,13 +124,13 @@ export default function Login({ onLoginSuccess }) {
           marginTop: '20px',
         }}>
           <h2 style={{
-            fontSize: '32px',
-            fontWeight: '500',
-            fontFamily: "'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif",
-            color: '#5D4037',
+            fontSize: '36px',
+            fontWeight: '400',
+            fontFamily: "'Jua', 'Dongle', 'Noto Sans KR', sans-serif",
+            color: '#9C27B0',
             marginBottom: '8px',
-            textShadow: '0 2px 4px rgba(255, 255, 255, 0.8)',
-            letterSpacing: '-0.5px',
+            textShadow: '0 2px 4px rgba(255, 255, 255, 0.9)',
+            letterSpacing: '1px',
           }}>잘살아보세</h2>
         </div>
       
@@ -162,13 +162,31 @@ export default function Login({ onLoginSuccess }) {
       
         <div style={{ flex: 1 }} /> {/* 공간 확보 */}
         
+        {/* 하단 안내 텍스트 */}
+        <div style={{
+          marginBottom: '16px',
+          textAlign: 'center',
+          color: '#5D4037',
+          fontSize: '14px',
+          lineHeight: '1.6',
+          backgroundColor: 'rgba(255, 255, 255, 0.8)',
+          padding: '12px',
+          borderRadius: '12px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+        }}>
+          <div style={{ marginBottom: '4px', fontWeight: '600' }}>🔒 안전하게 보호되는 데이터</div>
+          <div>Google 계정으로 간편하게 시작하세요</div>
+        </div>
+        
+        {/* 구글 로그인 버튼 - 하단 고정 */}
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
           style={{
             width: '100%',
             padding: '16px 24px',
-            marginTop: 'auto',
+            margin: '0',
+            marginBottom: '0',
             background: loading
               ? 'linear-gradient(135deg, #E0E0E0 0%, #BDBDBD 100%)'
               : 'linear-gradient(135deg, #4285f4 0%, #357ae8 100%)',
@@ -234,21 +252,6 @@ export default function Login({ onLoginSuccess }) {
           </>
         )}
       </button>
-      
-        <div style={{
-          marginTop: '24px',
-          textAlign: 'center',
-          color: '#5D4037',
-          fontSize: '14px',
-          lineHeight: '1.6',
-          backgroundColor: 'rgba(255, 255, 255, 0.8)',
-          padding: '12px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-        }}>
-          <div style={{ marginBottom: '4px', fontWeight: '600' }}>🔒 안전하게 보호되는 데이터</div>
-          <div>Google 계정으로 간편하게 시작하세요</div>
-        </div>
       </div>
     </div>
   )
