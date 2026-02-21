@@ -125,11 +125,21 @@ function App() {
           }
         }, 5000)
         
-        // setSession을 비동기로 호출
-        supabase.auth.setSession({
+        // setSession을 타임아웃과 함께 호출
+        const setSessionPromise = supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
-        }).then(async ({ data: { session }, error }) => {
+        })
+        
+        // setSession에 3초 타임아웃 추가
+        const setSessionWithTimeout = Promise.race([
+          setSessionPromise,
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('setSession 타임아웃')), 3000)
+          )
+        ])
+        
+        setSessionWithTimeout.then(async ({ data: { session }, error }) => {
           console.log('🔄 setSession 응답:', { 
             hasSession: !!session, 
             hasUser: !!session?.user,
@@ -180,21 +190,24 @@ function App() {
             }, 2000)
           }
         }).catch((err) => {
-          console.error('❌ setSession 오류:', err)
-          // 오류 시 getSession으로 재확인
-          setTimeout(async () => {
-            const { data: { session: retrySession } } = await supabase.auth.getSession()
+          console.error('❌ setSession 오류 또는 타임아웃:', err)
+          // 타임아웃 또는 오류 시 getSession으로 즉시 재확인
+          console.log('🔄 setSession 타임아웃/오류, getSession으로 즉시 재확인...')
+          supabase.auth.getSession().then(({ data: { session: retrySession } }) => {
             if (retrySession?.user) {
               console.log('✅ getSession으로 세션 확인 성공:', retrySession.user.email)
+              clearTimeout(timeoutId)
               setUser({ id: retrySession.user.id, email: retrySession.user.email || '' })
               setLoading(false)
               setIsHandlingCallback(false)
             } else {
-              console.warn('⚠️ 세션 확인 실패')
-              setLoading(false)
-              setIsHandlingCallback(false)
+              console.warn('⚠️ getSession으로도 세션 확인 실패, 백업 타임아웃 대기...')
+              // 백업 타임아웃이 처리할 것임
             }
-          }, 2000)
+          }).catch((getSessionErr) => {
+            console.error('❌ getSession 오류:', getSessionErr)
+            // 백업 타임아웃이 처리할 것임
+          })
         })
         
         
