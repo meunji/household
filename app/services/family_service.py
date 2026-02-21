@@ -7,10 +7,34 @@ from app.models.user import User
 from app.schemas.family import FamilyGroupCreate, FamilyMemberCreate
 from typing import List, Optional
 import logging
-from supabase import create_client, Client
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Supabase 클라이언트는 필요할 때만 생성 (지연 로딩)
+_supabase_admin_client_cache = None
+
+def _get_supabase_admin_client():
+    """Supabase Admin 클라이언트 생성 (싱글톤 패턴)"""
+    global _supabase_admin_client_cache
+    
+    if _supabase_admin_client_cache is not None:
+        return _supabase_admin_client_cache
+    
+    if not settings.supabase_service_key:
+        return None
+    
+    try:
+        from supabase import create_client
+        # 위치 인자만 사용 (키워드 인자 사용 시 오류 발생 가능)
+        _supabase_admin_client_cache = create_client(
+            settings.supabase_url, 
+            settings.supabase_service_key
+        )
+        return _supabase_admin_client_cache
+    except Exception as e:
+        logger.error(f"Supabase Admin 클라이언트 생성 실패: {str(e)}", exc_info=True)
+        return None
 
 
 class FamilyService:
@@ -107,10 +131,9 @@ class FamilyService:
         if settings.supabase_service_key:
             try:
                 # Supabase Admin API를 사용하여 이메일로 사용자 조회
-                supabase_admin: Client = create_client(
-                    settings.supabase_url,
-                    settings.supabase_service_key  # Admin 권한이 있는 서비스 키 필요
-                )
+                supabase_admin = _get_supabase_admin_client()
+                if not supabase_admin:
+                    raise ValueError("Supabase Admin 클라이언트를 생성할 수 없습니다.")
                 
                 # auth.users 테이블에서 이메일로 사용자 조회
                 # list_users는 모든 사용자를 반환하거나 페이지네이션을 지원할 수 있음
@@ -282,10 +305,9 @@ class FamilyService:
             return None
         
         try:
-            supabase_admin: Client = create_client(
-                settings.supabase_url,
-                settings.supabase_service_key
-            )
+            supabase_admin = _get_supabase_admin_client()
+            if not supabase_admin:
+                return None
             
             # getUserById를 사용하여 특정 사용자 조회 (가장 빠른 방법)
             try:
