@@ -249,3 +249,47 @@ class FamilyService:
         )
         user_ids = [row[0] for row in members.fetchall()]
         return user_ids if user_ids else [user_id]
+
+    @staticmethod
+    async def get_user_email(user_id: str) -> Optional[str]:
+        """user_id로 이메일 조회 (Supabase Admin API 사용)"""
+        if not settings.supabase_service_key:
+            return None
+        
+        try:
+            supabase_admin: Client = create_client(
+                settings.supabase_url,
+                settings.supabase_service_key
+            )
+            
+            # auth.users 테이블에서 user_id로 사용자 조회
+            response = supabase_admin.auth.admin.list_users()
+            
+            if response:
+                users_list = []
+                # response가 dict인 경우
+                if isinstance(response, dict) and 'users' in response:
+                    users_list = response['users']
+                # response가 객체이고 users 속성이 있는 경우
+                elif hasattr(response, 'users'):
+                    users_list = response.users if isinstance(response.users, list) else [response.users]
+                # response가 리스트인 경우
+                elif isinstance(response, list):
+                    users_list = response
+                
+                for user in users_list:
+                    # user가 dict인 경우
+                    if isinstance(user, dict):
+                        uid = user.get('id', '')
+                        email = user.get('email', '')
+                    # user가 객체인 경우
+                    else:
+                        uid = getattr(user, 'id', '') or ''
+                        email = getattr(user, 'email', '') or ''
+                    
+                    if uid == user_id:
+                        return email
+        except Exception as e:
+            logger.warning(f"이메일 조회 실패 (user_id: {user_id}): {str(e)}")
+        
+        return None

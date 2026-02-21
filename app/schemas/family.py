@@ -41,14 +41,29 @@ class FamilyMemberResponse(BaseModel):
         from_attributes = True
 
 
+class FamilyMemberWithEmailResponse(BaseModel):
+    """가족 구성원 응답 (이메일 포함)"""
+    id: UUID
+    family_group_id: UUID
+    user_id: str
+    email: Optional[str] = None  # 이메일 (조회 가능한 경우)
+    role: FamilyRole
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class FamilyGroupDetailResponse(BaseModel):
     """가족 그룹 상세 응답 (구성원 포함)"""
     id: UUID
     name: str
     admin_user_id: str
+    admin_email: Optional[str] = None  # 관리자 이메일
     created_at: datetime
     updated_at: datetime
-    members: List[FamilyMemberResponse]
+    members: List[FamilyMemberWithEmailResponse]
 
     class Config:
         from_attributes = True

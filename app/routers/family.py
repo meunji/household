@@ -10,6 +10,7 @@ from app.schemas.family import (
     FamilyMemberCreate,
     FamilyMemberResponse,
     FamilyGroupDetailResponse,
+    FamilyMemberWithEmailResponse,
 )
 
 router = APIRouter(prefix="/api/family", tags=["family"])
@@ -47,7 +48,7 @@ async def get_my_family_group(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """내가 속한 가족 그룹 조회"""
+    """내가 속한 가족 그룹 조회 (이메일 정보 포함)"""
     try:
         # 관리자로 관리하는 그룹 먼저 확인
         family_group = await FamilyService.get_family_group_by_admin(
@@ -66,7 +67,34 @@ async def get_my_family_group(
                 detail="가족 그룹을 찾을 수 없습니다.",
             )
         
-        return family_group
+        # user_id를 이메일로 변환
+        admin_email = await FamilyService.get_user_email(family_group.admin_user_id)
+        
+        # 구성원들의 user_id를 이메일로 변환
+        members_with_email = []
+        for member in family_group.members:
+            member_email = await FamilyService.get_user_email(member.user_id)
+            members_with_email.append(
+                FamilyMemberWithEmailResponse(
+                    id=member.id,
+                    family_group_id=member.family_group_id,
+                    user_id=member.user_id,
+                    email=member_email,
+                    role=member.role,
+                    created_at=member.created_at,
+                    updated_at=member.updated_at,
+                )
+            )
+        
+        return FamilyGroupDetailResponse(
+            id=family_group.id,
+            name=family_group.name,
+            admin_user_id=family_group.admin_user_id,
+            admin_email=admin_email,
+            created_at=family_group.created_at,
+            updated_at=family_group.updated_at,
+            members=members_with_email,
+        )
     except HTTPException:
         raise
     except Exception as e:

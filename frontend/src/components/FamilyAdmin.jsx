@@ -254,7 +254,7 @@ export default function FamilyAdmin() {
               {familyGroup.name}
             </h2>
             <p style={{ color: '#757575', fontSize: '14px' }}>
-              관리자: {familyGroup.admin_user_id}
+              관리자: {familyGroup.admin_email || familyGroup.admin_user_id}
             </p>
           </div>
 
@@ -281,7 +281,7 @@ export default function FamilyAdmin() {
                     >
                       <div>
                         <div style={{ fontWeight: '600', color: '#5D4037', marginBottom: '4px' }}>
-                          {member.user_id}
+                          {member.email || member.user_id}
                         </div>
                         <div style={{ fontSize: '14px', color: '#757575' }}>
                           {member.role === 'ADMIN' ? '관리자' : '구성원'}

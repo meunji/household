@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { calculationService } from '../api/services'
+import { getAuthToken } from '../auth/supabase'
 
 /**
  * 요약 화면 컴포넌트
@@ -10,10 +12,33 @@ export default function Summary() {
   const [monthly, setMonthly] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const location = useLocation()
 
   useEffect(() => {
-    loadData()
-  }, [])
+    // 컴포넌트 마운트 시 또는 경로 변경 시 데이터 로드
+    // 토큰이 준비될 때까지 기다린 후 로드
+    const initializeData = async () => {
+      // 토큰이 준비될 때까지 최대 2초 대기
+      let attempts = 0
+      const maxAttempts = 10
+      
+      while (attempts < maxAttempts) {
+        const token = await getAuthToken()
+        if (token) {
+          await loadData()
+          return
+        }
+        // 200ms 대기 후 재시도
+        await new Promise(resolve => setTimeout(resolve, 200))
+        attempts++
+      }
+      
+      // 토큰을 찾지 못해도 데이터 로드 시도 (에러 처리됨)
+      await loadData()
+    }
+    
+    initializeData()
+  }, [location.pathname])
 
   const loadData = async () => {
     try {
