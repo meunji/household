@@ -39,20 +39,27 @@ allowed_origins = [
     "http://localhost:3001",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
+    # GitHub Pages (프로덕션)
+    "https://meunji.github.io",
 ]
 
 # 환경 변수에서 추가 origin 가져오기 (배포 환경용)
 if os.getenv("ALLOWED_ORIGINS"):
-    allowed_origins.extend(
+    additional_origins = [
         origin.strip() for origin in os.getenv("ALLOWED_ORIGINS").split(",")
-    )
+        if origin.strip() and origin.strip() not in allowed_origins
+    ]
+    allowed_origins.extend(additional_origins)
+
+logger.info(f"CORS 허용된 origins: {allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # 전역 예외 핸들러
