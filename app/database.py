@@ -7,13 +7,12 @@ import ssl
 logger = logging.getLogger(__name__)
 
 # SSL 컨텍스트 설정
-# Connection Pooler 사용 시 인증서 검증 완화 (개발 환경)
-# 프로덕션에서는 인증서 검증을 유지하는 것이 좋습니다
+# Connection Pooler 사용 시 인증서 검증 완화
+# Supabase Connection Pooler는 self-signed certificate를 사용할 수 있으므로 검증 완화
 ssl_context = ssl.create_default_context()
-if settings.environment == "development":
-    # 개발 환경: Connection Pooler 인증서 검증 완화
-    ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE
+# 개발 및 프로덕션 모두에서 SSL 검증 완화 (Supabase Connection Pooler 호환성)
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
 
 # 비동기 엔진 생성
 # 성능 최적화: 연결 풀링 활성화 및 타임아웃 설정
