@@ -507,8 +507,28 @@ function App() {
   }
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    console.log('🔄 로그아웃 시작...')
+    try {
+      // signOut에 타임아웃 추가
+      const signOutPromise = supabase.auth.signOut()
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('signOut 타임아웃')), 3000)
+      )
+      
+      await Promise.race([signOutPromise, timeoutPromise])
+      console.log('✅ 로그아웃 성공')
+    } catch (err) {
+      console.warn('⚠️ 로그아웃 오류 또는 타임아웃:', err.message)
+      // 타임아웃되거나 오류가 발생해도 사용자 상태는 리셋
+    }
+    
+    // 사용자 상태 리셋
     setUser(null)
+    setLoading(false)
+    setIsHandlingCallback(false)
+    callbackHandledRef.current = false
+    
+    console.log('✅ 사용자 상태 리셋 완료')
   }
 
   if (loading) {
