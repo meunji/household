@@ -20,17 +20,10 @@ export default function Summary() {
       setLoading(true)
       setError(null)
       
-      // 타임아웃 추가 (5초) - 짧게 설정하여 빠르게 실패 처리
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('데이터 로딩 타임아웃 (5초)')), 5000)
-      )
-      
-      const [summaryData, monthlyData] = await Promise.race([
-        Promise.all([
-          calculationService.getSummary(),
-          calculationService.getMonthlySummary(),
-        ]),
-        timeoutPromise,
+      // API 호출 (타임아웃은 apiRequest 내부에서 처리)
+      const [summaryData, monthlyData] = await Promise.all([
+        calculationService.getSummary(),
+        calculationService.getMonthlySummary(),
       ])
       
       setSummary(summaryData)

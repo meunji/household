@@ -12,31 +12,52 @@ import { getAuthToken } from '../auth/supabase'
  * @returns {Promise<Response>}
  */
 const apiRequest = async (url, options = {}) => {
-  const token = await getAuthToken()
-  
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  }
-  
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-  
-  // 디버깅을 위한 로그 (항상 표시)
-  console.log('API Request:', {
-    url,
-    method: options.method || 'GET',
-    headers: { ...headers, Authorization: token ? 'Bearer ***' : 'None' },
-    apiBaseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-  })
+  // 타임아웃 설정 (10초)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => {
+    console.warn('⚠️ API 요청 타임아웃 (10초):', url)
+    controller.abort()
+  }, 10000)
   
   try {
+    // getAuthToken에 타임아웃 추가
+    let token = null
+    try {
+      const tokenPromise = getAuthToken()
+      const tokenTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('토큰 가져오기 타임아웃')), 3000)
+      )
+      token = await Promise.race([tokenPromise, tokenTimeout])
+    } catch (tokenErr) {
+      console.warn('⚠️ 토큰 가져오기 실패 (무시):', tokenErr.message)
+      // 토큰 없이 진행 (일부 엔드포인트는 토큰이 필요 없을 수 있음)
+    }
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    }
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    
+    // 디버깅을 위한 로그 (항상 표시)
+    console.log('API Request:', {
+      url,
+      method: options.method || 'GET',
+      headers: { ...headers, Authorization: token ? 'Bearer ***' : 'None' },
+      apiBaseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+    })
+    
     const response = await fetch(url, {
       ...options,
       headers,
       credentials: 'include', // CORS 쿠키 포함
+      signal: controller.signal, // 타임아웃 시 취소
     })
+    
+    clearTimeout(timeoutId) // 성공 시 타임아웃 취소
     
     if (!response.ok) {
       // 에러 응답 본문 읽기 (본문이 없을 수 있음)
@@ -101,6 +122,13 @@ const apiRequest = async (url, options = {}) => {
     // JSON이 아닌 경우 텍스트 반환
     return text
   } catch (err) {
+    clearTimeout(timeoutId) // 에러 시에도 타임아웃 취소
+    
+    // AbortError는 타임아웃
+    if (err.name === 'AbortError') {
+      throw new Error(`API 요청 타임아웃 (10초): ${url}`)
+    }
+    
     // 네트워크 오류 또는 CORS 오류 처리
     console.error('API Request Failed:', {
       url,
