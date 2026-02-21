@@ -15,40 +15,35 @@ export default function Summary() {
 
   useEffect(() => {
     // 컴포넌트 마운트 시 또는 경로 변경 시 데이터 로드
-    // 재시도 카운터 리셋
-    sessionStorage.removeItem('summary_retry_count')
+    let mounted = true
+    let retryTimer = null
+    
+    const loadDataOnce = async () => {
+      if (!mounted) return
+      
+      try {
+        await loadData()
+      } catch (err) {
+        // 에러는 loadData 내부에서 처리됨
+        console.error('데이터 로드 실패:', err)
+      }
+    }
     
     // 약간의 지연을 두어 다른 컴포넌트에서 토큰이 준비될 시간을 줌
-    let mounted = true
-    
-    const timer = setTimeout(async () => {
+    const timer = setTimeout(() => {
       if (mounted) {
-        await loadData()
+        loadDataOnce()
       }
-    }, 500)  // 지연 시간 증가 (500ms)
+    }, 300)
     
     return () => {
       mounted = false
       clearTimeout(timer)
-    }
-  }, [location.pathname])
-  
-  // 포커스 시 데이터 새로고침 (다른 화면에서 돌아올 때)
-  useEffect(() => {
-    let mounted = true
-    
-    const handleFocus = () => {
-      if (mounted) {
-        loadData()
+      if (retryTimer) {
+        clearTimeout(retryTimer)
       }
     }
-    
-    window.addEventListener('focus', handleFocus)
-    return () => {
-      mounted = false
-      window.removeEventListener('focus', handleFocus)
-    }
-  }, [])
+  }, [location.pathname])
 
   const loadData = async () => {
     // 이미 로딩 중이면 중복 호출 방지
@@ -80,19 +75,17 @@ export default function Summary() {
       
       // 타임아웃인 경우와 실제 오류인 경우 구분
       if (errorMessage.includes('타임아웃') || errorMessage.includes('timeout')) {
-        console.warn('⚠️ 요약 데이터 로딩 타임아웃 - 잠시 후 자동으로 다시 시도합니다')
-        // 타임아웃 시 2초 후 재시도 (최대 3회)
-        const retryCount = parseInt(sessionStorage.getItem('summary_retry_count') || '0')
-        if (retryCount < 3) {
-          sessionStorage.setItem('summary_retry_count', String(retryCount + 1))
-          setTimeout(() => {
-            console.log(`🔄 타임아웃 후 재시도... (${retryCount + 1}/3)`)
-            loadData()
-          }, 2000)
-        } else {
-          sessionStorage.removeItem('summary_retry_count')
-          setError('데이터를 불러오는 데 시간이 걸리고 있습니다. 새로고침 버튼을 눌러주세요.')
-        }
+        console.warn('⚠️ 요약 데이터 로딩 타임아웃')
+        // 타임아웃 시 기본값 설정하여 사용자 경험 개선
+        setSummary({ total_assets: 0, total_liabilities: 0, net_worth: 0 })
+        setMonthly({ 
+          year: new Date().getFullYear(), 
+          month: new Date().getMonth() + 1, 
+          total_income: 0, 
+          total_expense: 0 
+        })
+        // 재시도는 하지 않음 (무한 루프 방지)
+        setError('서버 응답이 느립니다. 잠시 후 새로고침 버튼을 눌러주세요.')
       } else {
         setError(errorMessage)
       }

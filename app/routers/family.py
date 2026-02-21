@@ -96,29 +96,36 @@ async def get_my_family_group(
                 detail="가족 그룹을 찾을 수 없습니다.",
             )
         
-        # JWT 토큰에서 현재 사용자의 이메일 추출
+        # JWT 토큰에서 현재 사용자의 이메일 추출 (빠른 방법)
         email_map = get_email_from_token(request)
         admin_email = email_map.get(family_group.admin_user_id)
         
-        # JWT에서 찾지 못하면 Supabase Admin API 사용
+        # JWT에서 찾지 못하면 Supabase Admin API 사용 (타임아웃 방지를 위해 최대 1초 대기)
         if not admin_email:
-            admin_email = await FamilyService.get_user_email(family_group.admin_user_id)
+            try:
+                import asyncio
+                admin_email = await asyncio.wait_for(
+                    FamilyService.get_user_email(family_group.admin_user_id),
+                    timeout=1.0
+                )
+            except (asyncio.TimeoutError, Exception) as e:
+                logger.debug(f"이메일 조회 실패 (admin_user_id: {family_group.admin_user_id[:8]}...): {str(e)}")
+                admin_email = None
         
-        # 구성원들의 user_id를 이메일로 변환
+        # 구성원들의 user_id를 이메일로 변환 (JWT에서 먼저 확인, 빠른 처리)
         members_with_email = []
         for member in family_group.members:
             # 먼저 JWT에서 확인 (현재 사용자)
             member_email = email_map.get(member.user_id)
-            # JWT에서 찾지 못하면 Supabase Admin API 사용
-            if not member_email:
-                member_email = await FamilyService.get_user_email(member.user_id)
+            # JWT에서 찾지 못하면 None (Supabase Admin API 호출은 느리므로 생략)
+            # 필요시 프론트엔드에서 처리하거나 별도 엔드포인트로 분리 가능
             
             members_with_email.append(
                 FamilyMemberWithEmailResponse(
                     id=member.id,
                     family_group_id=member.family_group_id,
                     user_id=member.user_id,
-                    email=member_email,
+                    email=member_email,  # JWT에서 찾은 경우만 이메일 표시
                     role=member.role,
                     created_at=member.created_at,
                     updated_at=member.updated_at,

@@ -229,32 +229,47 @@ class FamilyService:
         db: AsyncSession,
         user_id: str,
     ) -> List[str]:
-        """사용자가 속한 가족 그룹의 모든 구성원 user_id 목록 반환"""
-        # 사용자가 속한 가족 그룹 찾기
-        # 먼저 관리자로 관리하는 그룹 확인
-        family_group = await FamilyService.get_family_group_by_admin(db, user_id)
-        
-        # 관리하는 그룹이 없으면 구성원으로 속한 그룹 확인
-        if not family_group:
-            family_group = await FamilyService.get_family_group_by_member(db, user_id)
-        if not family_group:
-            # 가족 그룹에 속하지 않으면 자신의 user_id만 반환
-            return [user_id]
-
-        # 가족 그룹의 모든 구성원 user_id 가져오기
-        members = await db.execute(
-            select(FamilyMember.user_id).where(
-                FamilyMember.family_group_id == family_group.id
+        """사용자가 속한 가족 그룹의 모든 구성원 user_id 목록 반환 (최적화)"""
+        try:
+            # 단일 쿼리로 가족 그룹과 구성원을 한 번에 조회 (성능 개선)
+            # 먼저 관리자로 관리하는 그룹 확인
+            admin_result = await db.execute(
+                select(FamilyGroup.id).where(FamilyGroup.admin_user_id == user_id)
             )
-        )
-        user_ids = [row[0] for row in members.fetchall()]
-        return user_ids if user_ids else [user_id]
+            admin_group_id = admin_result.scalar_one_or_none()
+            
+            family_group_id = admin_group_id
+            
+            # 관리하는 그룹이 없으면 구성원으로 속한 그룹 확인
+            if not family_group_id:
+                member_result = await db.execute(
+                    select(FamilyMember.family_group_id).where(
+                        FamilyMember.user_id == user_id
+                    ).limit(1)
+                )
+                family_group_id = member_result.scalar_one_or_none()
+            
+            if not family_group_id:
+                # 가족 그룹에 속하지 않으면 자신의 user_id만 반환
+                return [user_id]
+
+            # 가족 그룹의 모든 구성원 user_id 가져오기
+            members = await db.execute(
+                select(FamilyMember.user_id).where(
+                    FamilyMember.family_group_id == family_group_id
+                )
+            )
+            user_ids = [row[0] for row in members.fetchall()]
+            return user_ids if user_ids else [user_id]
+        except Exception as e:
+            logger.warning(f"가족 그룹 조회 실패, 본인 user_id만 반환: {str(e)}")
+            return [user_id]
 
     @staticmethod
     async def get_user_email(user_id: str) -> Optional[str]:
-        """user_id로 이메일 조회 (Supabase Admin API 사용)"""
+        """user_id로 이메일 조회 (Supabase Admin API 사용, 타임아웃 최적화)"""
         if not settings.supabase_service_key:
-            logger.warning("SUPABASE_SERVICE_KEY가 설정되지 않아 이메일을 조회할 수 없습니다.")
+            logger.debug("SUPABASE_SERVICE_KEY가 설정되지 않아 이메일을 조회할 수 없습니다.")
             return None
         
         try:
@@ -263,7 +278,7 @@ class FamilyService:
                 settings.supabase_service_key
             )
             
-            # getUserById를 사용하여 특정 사용자 조회 (더 효율적)
+            # getUserById를 사용하여 특정 사용자 조회 (가장 빠른 방법)
             try:
                 user_response = supabase_admin.auth.admin.get_user_by_id(user_id)
                 
@@ -285,44 +300,15 @@ class FamilyService:
                             email = getattr(user, 'email', None)
                         
                         if email:
-                            logger.info(f"이메일 조회 성공: {user_id} -> {email}")
+                            logger.debug(f"이메일 조회 성공 (getUserById): {user_id[:8]}... -> {email}")
                             return email
             except Exception as getUserError:
-                logger.warning(f"getUserById 실패, list_users로 대체: {str(getUserError)}")
+                logger.debug(f"getUserById 실패: {str(getUserError)}")
             
-            # getUserById가 실패하면 list_users 사용
-            response = supabase_admin.auth.admin.list_users()
+            # getUserById가 실패하면 None 반환 (list_users는 너무 느림)
+            logger.debug(f"이메일 조회 실패 (user_id: {user_id[:8]}...)")
+            return None
             
-            if response:
-                users_list = []
-                # response가 dict인 경우
-                if isinstance(response, dict) and 'users' in response:
-                    users_list = response['users']
-                # response가 객체이고 users 속성이 있는 경우
-                elif hasattr(response, 'users'):
-                    users_list = response.users if isinstance(response.users, list) else [response.users]
-                # response가 리스트인 경우
-                elif isinstance(response, list):
-                    users_list = response
-                
-                logger.info(f"list_users로 {len(users_list)}명의 사용자 조회 중...")
-                
-                for user in users_list:
-                    # user가 dict인 경우
-                    if isinstance(user, dict):
-                        uid = user.get('id', '')
-                        email = user.get('email', '')
-                    # user가 객체인 경우
-                    else:
-                        uid = getattr(user, 'id', '') or ''
-                        email = getattr(user, 'email', '') or ''
-                    
-                    if uid == user_id:
-                        logger.info(f"이메일 조회 성공: {user_id} -> {email}")
-                        return email
-                
-                logger.warning(f"사용자를 찾을 수 없음: {user_id}")
         except Exception as e:
-            logger.error(f"이메일 조회 실패 (user_id: {user_id}): {str(e)}", exc_info=True)
-        
-        return None
+            logger.warning(f"이메일 조회 실패 (user_id: {user_id[:8]}...): {str(e)}")
+            return None
