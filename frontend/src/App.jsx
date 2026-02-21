@@ -158,7 +158,7 @@ function App() {
         // setSession 호출 후 onAuthStateChange가 처리할 때까지 대기
         // 최대 10초 대기 후 타임아웃
         setTimeout(() => {
-          if (isHandlingCallback) {
+          if (callbackHandledRef.current) {
             console.warn('⚠️ OAuth 콜백 처리 타임아웃 (10초), getSession으로 재확인...')
             supabase.auth.getSession().then(({ data: { session } }) => {
               if (session?.user) {
@@ -179,23 +179,23 @@ function App() {
       
       // OAuth 콜백이 아닌 경우: 로딩을 즉시 종료하고 로그인 화면 표시
       // 사용자가 로그인 버튼을 눌렀을 때만 인증 확인
-      // OAuth 콜백 처리 중이 아닐 때만 실행
-      if (!isHandlingCallback) {
+      // callbackHandledRef를 사용하여 OAuth 콜백 처리 중이 아닐 때만 실행
+      if (!callbackHandledRef.current) {
         console.log('ℹ️ 초기 로딩 완료, 로그인 화면 표시')
         setLoading(false)
+        
+        // 백그라운드에서 빠른 세션 확인 (비동기, 로딩 상태에 영향 없음)
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) {
+            console.log('✅ 기존 세션 발견:', session.user.email)
+            setUser({ id: session.user.id, email: session.user.email || '' })
+          } else {
+            console.log('ℹ️ 세션 없음, 로그인 필요')
+          }
+        }).catch((error) => {
+          console.log('ℹ️ 세션 확인 중 오류 (무시):', error)
+        })
       }
-      
-      // 백그라운드에서 빠른 세션 확인 (비동기, 로딩 상태에 영향 없음)
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          console.log('✅ 기존 세션 발견:', session.user.email)
-          setUser({ id: session.user.id, email: session.user.email || '' })
-        } else {
-          console.log('ℹ️ 세션 없음, 로그인 필요')
-        }
-      }).catch((error) => {
-        console.log('ℹ️ 세션 확인 중 오류 (무시):', error)
-      })
     }
   }, [])
 
