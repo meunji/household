@@ -10,7 +10,7 @@ export default function FamilyAdmin() {
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
-  const [newMemberUserId, setNewMemberUserId] = useState('')
+  const [newMemberEmail, setNewMemberEmail] = useState('')
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
 
@@ -59,8 +59,15 @@ export default function FamilyAdmin() {
   }
 
   const handleAddMember = async () => {
-    if (!newMemberUserId.trim()) {
-      setError('사용자 ID를 입력해주세요.')
+    if (!newMemberEmail.trim()) {
+      setError('이메일 주소를 입력해주세요.')
+      return
+    }
+
+    // 이메일 형식 검증
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(newMemberEmail.trim())) {
+      setError('올바른 이메일 형식이 아닙니다.')
       return
     }
 
@@ -73,12 +80,12 @@ export default function FamilyAdmin() {
       setSubmitting(true)
       setError(null)
       await familyService.addFamilyMember(familyGroup.id, {
-        user_id: newMemberUserId.trim(),
+        email: newMemberEmail.trim().toLowerCase(),
         role: 'MEMBER',
       })
       // 가족 그룹 다시 로드
       await loadFamilyGroup()
-      setNewMemberUserId('')
+      setNewMemberEmail('')
     } catch (err) {
       console.error('구성원 추가 오류:', err)
       setError(err.message || '구성원 추가 중 오류가 발생했습니다.')
@@ -314,10 +321,10 @@ export default function FamilyAdmin() {
               </h4>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <input
-                  type="text"
-                  value={newMemberUserId}
-                  onChange={(e) => setNewMemberUserId(e.target.value)}
-                  placeholder="추가할 사용자의 Supabase user_id 입력"
+                  type="email"
+                  value={newMemberEmail}
+                  onChange={(e) => setNewMemberEmail(e.target.value)}
+                  placeholder="추가할 사용자의 이메일 주소 입력 (예: user@gmail.com)"
                   style={{
                     flex: 1,
                     padding: '12px 16px',
@@ -333,7 +340,7 @@ export default function FamilyAdmin() {
                 />
                 <button
                   onClick={handleAddMember}
-                  disabled={submitting || !newMemberUserId.trim()}
+                  disabled={submitting || !newMemberEmail.trim()}
                   style={{
                     padding: '12px 24px',
                     fontSize: '16px',
@@ -342,15 +349,15 @@ export default function FamilyAdmin() {
                     backgroundColor: '#FF8A80',
                     border: 'none',
                     borderRadius: '8px',
-                    cursor: submitting || !newMemberUserId.trim() ? 'not-allowed' : 'pointer',
-                    opacity: submitting || !newMemberUserId.trim() ? 0.6 : 1,
+                    cursor: submitting || !newMemberEmail.trim() ? 'not-allowed' : 'pointer',
+                    opacity: submitting || !newMemberEmail.trim() ? 0.6 : 1,
                   }}
                 >
                   {submitting ? '추가 중...' : '추가'}
                 </button>
               </div>
               <p style={{ fontSize: '14px', color: '#757575', marginTop: '8px' }}>
-                💡 구성원의 Supabase user_id는 Supabase 대시보드의 Authentication > Users에서 확인할 수 있습니다.
+                💡 추가할 사용자는 먼저 구글 계정으로 로그인해야 합니다. 이메일 주소를 입력해주세요.
               </p>
             </div>
           </div>

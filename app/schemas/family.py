@@ -24,7 +24,7 @@ class FamilyGroupResponse(BaseModel):
 
 class FamilyMemberCreate(BaseModel):
     """가족 구성원 추가 요청"""
-    user_id: str = Field(..., description="추가할 사용자의 Supabase user_id")
+    email: str = Field(..., description="추가할 사용자의 이메일 주소 (구글 계정)")
     role: Optional[FamilyRole] = Field(FamilyRole.MEMBER, description="역할 (ADMIN 또는 MEMBER)")
 
 
