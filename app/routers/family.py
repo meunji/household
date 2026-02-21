@@ -18,18 +18,65 @@ from jose import jwt
 router = APIRouter(prefix="/api/family", tags=["family"])
 
 
-@router.post("/groups", response_model=FamilyGroupResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/groups", response_model=FamilyGroupDetailResponse, status_code=status.HTTP_201_CREATED)
 async def create_family_group(
+    request: Request,
     family_data: FamilyGroupCreate,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """가족 그룹 생성"""
+    """가족 그룹 생성 (이메일 정보 포함)"""
     try:
         family_group = await FamilyService.create_family_group(
             db, family_data, user_id
         )
-        return family_group
+        
+        # 생성 후 이메일 정보를 포함한 상세 정보 반환
+        # JWT 토큰에서 현재 사용자의 이메일 추출
+        email_map = get_email_from_token(request)
+        admin_email = email_map.get(family_group.admin_user_id)
+        
+        # JWT에서 찾지 못하면 Supabase Admin API 사용 (타임아웃 방지를 위해 최대 1초 대기)
+        if not admin_email:
+            try:
+                import asyncio
+                admin_email = await asyncio.wait_for(
+                    FamilyService.get_user_email(family_group.admin_user_id),
+                    timeout=1.0
+                )
+            except (asyncio.TimeoutError, Exception) as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.debug(f"이메일 조회 실패 (admin_user_id: {family_group.admin_user_id[:8]}...): {str(e)}")
+                admin_email = None
+        
+        # 구성원들의 user_id를 이메일로 변환 (JWT에서 먼저 확인)
+        members_with_email = []
+        for member in family_group.members:
+            # 먼저 JWT에서 확인 (현재 사용자)
+            member_email = email_map.get(member.user_id)
+            
+            members_with_email.append(
+                FamilyMemberWithEmailResponse(
+                    id=member.id,
+                    family_group_id=member.family_group_id,
+                    user_id=member.user_id,
+                    email=member_email,  # JWT에서 찾은 경우만 이메일 표시
+                    role=member.role,
+                    created_at=member.created_at,
+                    updated_at=member.updated_at,
+                )
+            )
+        
+        return FamilyGroupDetailResponse(
+            id=family_group.id,
+            name=family_group.name,
+            admin_user_id=family_group.admin_user_id,
+            admin_email=admin_email,
+            created_at=family_group.created_at,
+            updated_at=family_group.updated_at,
+            members=members_with_email,
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

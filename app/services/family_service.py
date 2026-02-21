@@ -47,8 +47,17 @@ class FamilyService:
         db.add(admin_member)
         await db.commit()
         await db.refresh(family_group)
-
-        return family_group
+        
+        # 구성원 정보를 포함하도록 members 관계 로드
+        from sqlalchemy.orm import selectinload
+        result = await db.execute(
+            select(FamilyGroup)
+            .where(FamilyGroup.id == family_group.id)
+            .options(selectinload(FamilyGroup.members))
+        )
+        family_group_with_members = result.scalar_one()
+        
+        return family_group_with_members
 
     @staticmethod
     async def get_family_group_by_admin(

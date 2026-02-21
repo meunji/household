@@ -56,8 +56,9 @@ export default function FamilyAdmin() {
     try {
       setSubmitting(true)
       setError(null)
-      const data = await familyService.createFamilyGroup({ name: newGroupName })
-      setFamilyGroup(data)
+      await familyService.createFamilyGroup({ name: newGroupName })
+      // 가족 그룹 생성 후 이메일 정보를 포함한 상세 정보를 다시 조회
+      await loadFamilyGroup()
       setShowCreateForm(false)
       setNewGroupName('')
     } catch (err) {
@@ -93,7 +94,7 @@ export default function FamilyAdmin() {
         email: newMemberEmail.trim().toLowerCase(),
         role: 'MEMBER',
       })
-      // 가족 그룹 다시 로드
+      // 가족 그룹 다시 로드 (이메일 정보 포함)
       await loadFamilyGroup()
       setNewMemberEmail('')
     } catch (err) {
