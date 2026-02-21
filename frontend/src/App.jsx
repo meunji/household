@@ -129,8 +129,26 @@ function App() {
         return
       }
       
-      // 일반적인 사용자 확인 (OAuth 콜백이 아닌 경우)
-      checkUser()
+      // OAuth 콜백이 아닌 경우: 빠른 세션 확인만 수행 (타임아웃 없이)
+      // 사용자가 로그인 버튼을 눌렀을 때만 인증 확인
+      const quickSessionCheck = async () => {
+        try {
+          // 빠른 세션 확인 (타임아웃 없이)
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.user) {
+            console.log('✅ 기존 세션 발견:', session.user.email)
+            setUser({ id: session.user.id, email: session.user.email || '' })
+          } else {
+            console.log('ℹ️ 세션 없음, 로그인 필요')
+          }
+        } catch (error) {
+          console.log('ℹ️ 세션 확인 중 오류 (무시):', error)
+        } finally {
+          setLoading(false)
+        }
+      }
+      
+      quickSessionCheck()
     }
 
     handleAuthCallback()
@@ -251,8 +269,16 @@ function App() {
     }
   }
 
-  const handleLoginSuccess = () => {
-    loadUser()
+  const handleLoginSuccess = async () => {
+    // 로그인 성공 후 사용자 정보 확인
+    console.log('🔄 로그인 성공, 사용자 정보 확인 중...')
+    await loadUser()
+  }
+  
+  const handleCheckAuth = async () => {
+    // 사용자가 명시적으로 인증 확인을 요청한 경우
+    setLoading(true)
+    await checkUser()
   }
 
   const handleLogout = async () => {
