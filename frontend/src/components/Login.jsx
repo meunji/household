@@ -142,7 +142,7 @@ export default function Login({ onLoginSuccess }) {
             marginBottom: '8px',
             textShadow: '0 2px 8px rgba(255, 255, 255, 0.95), 0 1px 3px rgba(0, 0, 0, 0.1)',
             letterSpacing: '0.5px',
-          }}>잘살아보세</h2>
+          }}>잘살아보세 ♡</h2>
         </div>
       
         {error && (

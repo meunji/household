@@ -10,7 +10,7 @@ import FamilyAdmin from './components/FamilyAdmin'
 /**
  * 네비게이션 링크 컴포넌트
  */
-function NavLink({ to, children, icon }) {
+function NavLink({ to, children, icon, isMobile }) {
   const location = useLocation()
   const isActive = location.pathname === to
   
@@ -18,7 +18,7 @@ function NavLink({ to, children, icon }) {
     <Link
       to={to}
       style={{
-        padding: '12px 24px',
+        padding: isMobile ? '8px 12px' : '12px 24px',
         borderRadius: '12px',
         textDecoration: 'none',
         color: isActive ? '#FFFFFF' : '#5D4037',
@@ -29,13 +29,15 @@ function NavLink({ to, children, icon }) {
           ? 'linear-gradient(135deg, #FF8A80 0%, #FF6B6B 100%)'
           : '#FFFFFF',
         fontWeight: isActive ? '600' : '500',
+        fontSize: isMobile ? '12px' : '14px',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         boxShadow: isActive 
           ? '0 4px 12px rgba(255, 138, 128, 0.3)'
           : '0 2px 4px rgba(93, 64, 55, 0.08)',
         display: 'flex',
         alignItems: 'center',
-        gap: '8px',
+        gap: isMobile ? '4px' : '8px',
+        whiteSpace: 'nowrap',
       }}
       onMouseEnter={(e) => {
         if (!isActive) {
@@ -50,7 +52,7 @@ function NavLink({ to, children, icon }) {
         }
       }}
     >
-      {icon && <span style={{ fontSize: '18px' }}>{icon}</span>}
+      {icon && <span style={{ fontSize: isMobile ? '14px' : '18px' }}>{icon}</span>}
       {children}
     </Link>
   )
@@ -687,28 +689,31 @@ function App() {
         {/* 네비게이션 바 */}
         <nav style={{
           background: 'linear-gradient(135deg, #FFFFFF 0%, #FFFBF5 100%)',
-          padding: '20px 0',
-          marginBottom: '30px',
+          padding: isMobile ? '12px 0' : '20px 0',
+          marginBottom: isMobile ? '20px' : '30px',
           boxShadow: '0 2px 8px rgba(93, 64, 55, 0.08)',
           borderBottom: '1px solid rgba(255, 138, 128, 0.1)',
         }}>
           <div style={{
             maxWidth: '1200px',
             margin: '0 auto',
-            padding: '0 24px',
+            padding: isMobile ? '0 16px' : '0 24px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            flexWrap: 'nowrap',
           }}>
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
+              gap: isMobile ? '8px' : '12px',
+              minWidth: 0,
+              flex: '0 1 auto',
             }}>
-              <span style={{ fontSize: '28px' }}>🏠</span>
+              <span style={{ fontSize: isMobile ? '20px' : '28px', flexShrink: 0 }}>🏠</span>
               <h1 style={{
                 margin: 0,
-                fontSize: '24px',
+                fontSize: isMobile ? '16px' : '24px',
                 fontWeight: '500',
                 fontFamily: "'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif",
                 color: '#5D4037',
@@ -716,31 +721,39 @@ function App() {
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 letterSpacing: '-0.5px',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
               }}>아은이네 부자되기</h1>
             </div>
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '16px',
+              gap: isMobile ? '8px' : '16px',
+              flexShrink: 0,
             }}>
-              <span style={{
-                fontSize: '14px',
-                color: '#8D6E63',
-                fontWeight: '500',
-              }}>{user.email}</span>
+              {!isMobile && (
+                <span style={{
+                  fontSize: '14px',
+                  color: '#8D6E63',
+                  fontWeight: '500',
+                  whiteSpace: 'nowrap',
+                }}>{user.email}</span>
+              )}
               <button
                 onClick={handleLogout}
                 style={{
-                  padding: '10px 20px',
+                  padding: isMobile ? '8px 12px' : '10px 20px',
                   background: 'linear-gradient(135deg, #FFB3B0 0%, #FF8A80 100%)',
                   color: '#FFFFFF',
                   border: 'none',
                   borderRadius: '12px',
                   cursor: 'pointer',
                   fontWeight: '500',
-                  fontSize: '14px',
+                  fontSize: isMobile ? '12px' : '14px',
                   transition: 'all 0.3s ease',
                   boxShadow: '0 2px 4px rgba(255, 138, 128, 0.2)',
+                  whiteSpace: 'nowrap',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'translateY(-2px)'
@@ -760,18 +773,20 @@ function App() {
         {/* 메뉴 */}
         <div style={{
           maxWidth: '1200px',
-          margin: '0 auto 30px',
-          padding: '0 24px',
+          margin: '0 auto',
+          marginBottom: isMobile ? '20px' : '30px',
+          padding: isMobile ? '0 16px' : '0 24px',
         }}>
           <div style={{
             display: 'flex',
-            gap: '12px',
+            gap: isMobile ? '8px' : '12px',
             flexWrap: 'wrap',
+            justifyContent: isMobile ? 'center' : 'flex-start',
           }}>
-            <NavLink to="/summary" icon="📊">요약</NavLink>
-            <NavLink to="/assets" icon="💰">자산 관리</NavLink>
-            <NavLink to="/transactions" icon="📝">거래 관리</NavLink>
-            <NavLink to="/admin" icon="👨‍👩‍👧‍👦">관리자</NavLink>
+            <NavLink to="/summary" icon="📊" isMobile={isMobile}>요약</NavLink>
+            <NavLink to="/assets" icon="💰" isMobile={isMobile}>자산 관리</NavLink>
+            <NavLink to="/transactions" icon="📝" isMobile={isMobile}>거래 관리</NavLink>
+            <NavLink to="/admin" icon="👨‍👩‍👧‍👦" isMobile={isMobile}>관리자</NavLink>
           </div>
         </div>
 
