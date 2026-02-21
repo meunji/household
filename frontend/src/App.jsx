@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
-import { supabase, getCurrentUser } from './auth/supabase'
+import { supabase, getCurrentUser, setAuthToken, clearAuthToken } from './auth/supabase'
 import Login from './components/Login'
 import AssetForm from './components/AssetForm'
 import TransactionForm from './components/TransactionForm'
@@ -154,6 +154,12 @@ function App() {
           console.log('✅ getSession으로 세션 확인 성공:', existingSession.user.email)
           // URL 해시 정리 (보안상)
           window.history.replaceState(null, '', window.location.pathname)
+          
+          // 토큰을 localStorage에 저장 (API 호출 시 사용)
+          if (existingSession.access_token) {
+            setAuthToken(existingSession.access_token)
+          }
+          
           setUser({ id: existingSession.user.id, email: existingSession.user.email || '' })
           setLoading(false)
           setIsHandlingCallback(false)
@@ -170,6 +176,9 @@ function App() {
           // URL 해시 정리 (보안상)
           window.history.replaceState(null, '', window.location.pathname)
           
+          // 토큰을 localStorage에 저장 (API 호출 시 사용)
+          setAuthToken(accessToken)
+          
           // setSession을 백그라운드에서 시도하되, 사용자는 즉시 설정
           setUser({ id: userId, email: userEmail })
           setLoading(false)
@@ -182,6 +191,10 @@ function App() {
           }).then(({ data: { session }, error }) => {
             if (session?.user) {
               console.log('✅ 백그라운드 setSession 성공')
+              // 세션에서 토큰 업데이트
+              if (session.access_token) {
+                setAuthToken(session.access_token)
+              }
             } else if (error) {
               console.warn('⚠️ 백그라운드 setSession 실패 (무시):', error.message)
             }
@@ -386,6 +399,10 @@ function App() {
       // OAuth 콜백 처리 중인 경우
       if (isHandlingCallback && session && _event === 'SIGNED_IN') {
         console.log('✅ SIGNED_IN 이벤트 (OAuth 콜백 처리 중), 사용자 정보 로드 중...')
+        // 토큰을 localStorage에 저장
+        if (session.access_token) {
+          setAuthToken(session.access_token)
+        }
         setIsHandlingCallback(false)
         await loadUser()
         return
@@ -394,9 +411,14 @@ function App() {
       // 일반적인 인증 상태 변경
       if (session && _event === 'SIGNED_IN') {
         console.log('✅ SIGNED_IN 이벤트, 사용자 정보 로드 중...')
+        // 토큰을 localStorage에 저장
+        if (session.access_token) {
+          setAuthToken(session.access_token)
+        }
         await loadUser()
       } else if (!session && _event === 'SIGNED_OUT') {
         console.log('👋 SIGNED_OUT 이벤트')
+        clearAuthToken()
         setUser(null)
         setLoading(false)
         setIsHandlingCallback(false)
@@ -440,6 +462,9 @@ function App() {
           if (session?.user) {
             console.log('✅ 세션에서 사용자 정보 확인됨')
             setUser({ id: session.user.id, email: session.user.email || '' })
+            if (session.access_token) {
+              setAuthToken(session.access_token)
+            }
             setLoading(false)
             return
           }
@@ -469,12 +494,24 @@ function App() {
       
       if (currentUser) {
         setUser(currentUser)
+        // 세션에서 토큰 가져와서 저장
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.access_token) {
+            setAuthToken(session.access_token)
+          }
+        } catch (e) {
+          // 무시
+        }
       } else {
         // 세션에서 직접 가져오기 시도
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
           console.log('✅ 세션에서 사용자 정보 가져옴')
           setUser({ id: session.user.id, email: session.user.email || '' })
+          if (session.access_token) {
+            setAuthToken(session.access_token)
+          }
         }
       }
       setLoading(false)
@@ -486,6 +523,9 @@ function App() {
         if (session?.user) {
           console.log('✅ 세션에서 사용자 정보 가져옴 (폴백)')
           setUser({ id: session.user.id, email: session.user.email || '' })
+          if (session.access_token) {
+            setAuthToken(session.access_token)
+          }
         }
       } catch (e) {
         console.error('❌ 세션에서도 사용자 정보 가져오기 실패:', e)
@@ -521,6 +561,9 @@ function App() {
       console.warn('⚠️ 로그아웃 오류 또는 타임아웃:', err.message)
       // 타임아웃되거나 오류가 발생해도 사용자 상태는 리셋
     }
+    
+    // 저장된 토큰 삭제
+    clearAuthToken()
     
     // 사용자 상태 리셋
     setUser(null)
