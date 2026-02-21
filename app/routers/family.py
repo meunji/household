@@ -50,23 +50,75 @@ async def create_family_group(
                 logger.debug(f"이메일 조회 실패 (admin_user_id: {family_group.admin_user_id[:8]}...): {str(e)}")
                 admin_email = None
         
-        # 구성원들의 user_id를 이메일로 변환 (JWT에서 먼저 확인)
+        # 구성원들의 user_id를 이메일로 변환
+        # JWT에서 먼저 확인하고, 없으면 Supabase Admin API로 조회 (병렬 처리)
         members_with_email = []
+        email_tasks = []
+        
         for member in family_group.members:
             # 먼저 JWT에서 확인 (현재 사용자)
             member_email = email_map.get(member.user_id)
             
-            members_with_email.append(
-                FamilyMemberWithEmailResponse(
-                    id=member.id,
-                    family_group_id=member.family_group_id,
-                    user_id=member.user_id,
-                    email=member_email,  # JWT에서 찾은 경우만 이메일 표시
-                    role=member.role,
-                    created_at=member.created_at,
-                    updated_at=member.updated_at,
+            # JWT에서 찾지 못하면 Supabase Admin API로 조회 (병렬 처리)
+            if not member_email:
+                import asyncio
+                email_tasks.append(
+                    (member, asyncio.wait_for(
+                        FamilyService.get_user_email(member.user_id),
+                        timeout=2.0  # 각 구성원당 최대 2초 대기
+                    ))
                 )
+            else:
+                # JWT에서 찾은 경우 즉시 추가
+                members_with_email.append(
+                    FamilyMemberWithEmailResponse(
+                        id=member.id,
+                        family_group_id=member.family_group_id,
+                        user_id=member.user_id,
+                        email=member_email,
+                        role=member.role,
+                        created_at=member.created_at,
+                        updated_at=member.updated_at,
+                    )
+                )
+        
+        # 병렬로 이메일 조회
+        if email_tasks:
+            import asyncio
+            import logging
+            logger = logging.getLogger(__name__)
+            
+            async def fetch_email_with_member(member, email_task):
+                try:
+                    email = await email_task
+                    return (member, email)
+                except (asyncio.TimeoutError, Exception) as e:
+                    logger.debug(f"구성원 이메일 조회 실패 (user_id: {member.user_id[:8]}...): {str(e)}")
+                    return (member, None)
+            
+            # 모든 이메일 조회 작업을 병렬로 실행
+            email_results = await asyncio.gather(
+                *[fetch_email_with_member(member, task) for member, task in email_tasks],
+                return_exceptions=True
             )
+            
+            # 결과를 members_with_email에 추가
+            for result in email_results:
+                if isinstance(result, Exception):
+                    logger.warning(f"이메일 조회 중 예외 발생: {str(result)}")
+                    continue
+                member, email = result
+                members_with_email.append(
+                    FamilyMemberWithEmailResponse(
+                        id=member.id,
+                        family_group_id=member.family_group_id,
+                        user_id=member.user_id,
+                        email=email,
+                        role=member.role,
+                        created_at=member.created_at,
+                        updated_at=member.updated_at,
+                    )
+                )
         
         return FamilyGroupDetailResponse(
             id=family_group.id,
@@ -157,28 +209,80 @@ async def get_my_family_group(
                     timeout=1.0
                 )
             except (asyncio.TimeoutError, Exception) as e:
+                import logging
+                logger = logging.getLogger(__name__)
                 logger.debug(f"이메일 조회 실패 (admin_user_id: {family_group.admin_user_id[:8]}...): {str(e)}")
                 admin_email = None
         
-        # 구성원들의 user_id를 이메일로 변환 (JWT에서 먼저 확인, 빠른 처리)
+        # 구성원들의 user_id를 이메일로 변환
+        # JWT에서 먼저 확인하고, 없으면 Supabase Admin API로 조회 (병렬 처리)
         members_with_email = []
+        email_tasks = []
+        
         for member in family_group.members:
             # 먼저 JWT에서 확인 (현재 사용자)
             member_email = email_map.get(member.user_id)
-            # JWT에서 찾지 못하면 None (Supabase Admin API 호출은 느리므로 생략)
-            # 필요시 프론트엔드에서 처리하거나 별도 엔드포인트로 분리 가능
             
-            members_with_email.append(
-                FamilyMemberWithEmailResponse(
-                    id=member.id,
-                    family_group_id=member.family_group_id,
-                    user_id=member.user_id,
-                    email=member_email,  # JWT에서 찾은 경우만 이메일 표시
-                    role=member.role,
-                    created_at=member.created_at,
-                    updated_at=member.updated_at,
+            # JWT에서 찾지 못하면 Supabase Admin API로 조회 (병렬 처리)
+            if not member_email:
+                import asyncio
+                email_tasks.append(
+                    (member, asyncio.wait_for(
+                        FamilyService.get_user_email(member.user_id),
+                        timeout=2.0  # 각 구성원당 최대 2초 대기
+                    ))
                 )
+            else:
+                # JWT에서 찾은 경우 즉시 추가
+                members_with_email.append(
+                    FamilyMemberWithEmailResponse(
+                        id=member.id,
+                        family_group_id=member.family_group_id,
+                        user_id=member.user_id,
+                        email=member_email,
+                        role=member.role,
+                        created_at=member.created_at,
+                        updated_at=member.updated_at,
+                    )
+                )
+        
+        # 병렬로 이메일 조회
+        if email_tasks:
+            import asyncio
+            import logging
+            logger = logging.getLogger(__name__)
+            
+            async def fetch_email_with_member(member, email_task):
+                try:
+                    email = await email_task
+                    return (member, email)
+                except (asyncio.TimeoutError, Exception) as e:
+                    logger.debug(f"구성원 이메일 조회 실패 (user_id: {member.user_id[:8]}...): {str(e)}")
+                    return (member, None)
+            
+            # 모든 이메일 조회 작업을 병렬로 실행
+            email_results = await asyncio.gather(
+                *[fetch_email_with_member(member, task) for member, task in email_tasks],
+                return_exceptions=True
             )
+            
+            # 결과를 members_with_email에 추가
+            for result in email_results:
+                if isinstance(result, Exception):
+                    logger.warning(f"이메일 조회 중 예외 발생: {str(result)}")
+                    continue
+                member, email = result
+                members_with_email.append(
+                    FamilyMemberWithEmailResponse(
+                        id=member.id,
+                        family_group_id=member.family_group_id,
+                        user_id=member.user_id,
+                        email=email,
+                        role=member.role,
+                        created_at=member.created_at,
+                        updated_at=member.updated_at,
+                    )
+                )
         
         return FamilyGroupDetailResponse(
             id=family_group.id,
