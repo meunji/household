@@ -110,7 +110,14 @@ function App() {
         const timeoutId = setTimeout(() => {
           if (callbackHandledRef.current) {
             console.warn('⚠️ OAuth 콜백 처리 타임아웃 (5초), getSession으로 재확인...')
-            supabase.auth.getSession().then(({ data: { session } }) => {
+            supabase.auth.getSession().then(({ data: { session }, error: getSessionError }) => {
+              console.log('🔄 백업 타임아웃 getSession 응답:', { 
+                hasSession: !!session, 
+                hasUser: !!session?.user,
+                userEmail: session?.user?.email,
+                error: getSessionError?.message 
+              })
+              
               if (session?.user) {
                 console.log('✅ 타임아웃 후 getSession 성공:', session.user.email)
                 setUser({ id: session.user.id, email: session.user.email || '' })
@@ -118,9 +125,14 @@ function App() {
                 setIsHandlingCallback(false)
               } else {
                 console.warn('⚠️ 타임아웃 후에도 세션 없음')
+                console.warn('⚠️ getSessionError:', getSessionError)
                 setLoading(false)
                 setIsHandlingCallback(false)
               }
+            }).catch((getSessionErr) => {
+              console.error('❌ 백업 타임아웃 getSession 오류:', getSessionErr)
+              setLoading(false)
+              setIsHandlingCallback(false)
             })
           }
         }, 5000)
@@ -193,7 +205,14 @@ function App() {
           console.error('❌ setSession 오류 또는 타임아웃:', err)
           // 타임아웃 또는 오류 시 getSession으로 즉시 재확인
           console.log('🔄 setSession 타임아웃/오류, getSession으로 즉시 재확인...')
-          supabase.auth.getSession().then(({ data: { session: retrySession } }) => {
+          supabase.auth.getSession().then(({ data: { session: retrySession }, error: getSessionError }) => {
+            console.log('🔄 getSession 응답:', { 
+              hasSession: !!retrySession, 
+              hasUser: !!retrySession?.user,
+              userEmail: retrySession?.user?.email,
+              error: getSessionError?.message 
+            })
+            
             if (retrySession?.user) {
               console.log('✅ getSession으로 세션 확인 성공:', retrySession.user.email)
               clearTimeout(timeoutId)
@@ -202,6 +221,7 @@ function App() {
               setIsHandlingCallback(false)
             } else {
               console.warn('⚠️ getSession으로도 세션 확인 실패, 백업 타임아웃 대기...')
+              console.warn('⚠️ getSessionError:', getSessionError)
               // 백업 타임아웃이 처리할 것임
             }
           }).catch((getSessionErr) => {
