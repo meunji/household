@@ -40,7 +40,14 @@ export const calculationService = {
  * 카테고리 관련 API 서비스
  */
 export const categoryService = {
-  getCategories: () => apiGet(API_ENDPOINTS.CATEGORIES.LIST),
+  getCategories: (type) => {
+    const url = new URL(API_ENDPOINTS.CATEGORIES.LIST)
+    if (type) {
+      url.searchParams.set('type', type)
+    }
+    return apiGet(url.toString())
+  },
+  // apiGet(API_ENDPOINTS.CATEGORIES.LIST),
   getAllCategories: () => apiGet(API_ENDPOINTS.CATEGORIES.ALL),
 }
 
